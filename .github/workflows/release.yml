@@ -1,0 +1,69 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build icon
+        run: python -c "import myanmar_flow as m; m.make_icon(m.STATE_COLORS['idle'], 256).save('icon.ico', sizes=[(16,16),(32,32),(48,48),(256,256)])"
+
+      - name: Build exe
+        run: pyinstaller --noconfirm --onefile --windowed --name MyanmarFlow --icon icon.ico --hidden-import pystray._win32 myanmar_flow.py
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME.TrimStart("v") } else { "0.0.0-dev" }
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) { choco install innosetup -y --no-progress }
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          & $iscc "/DAppVersion=$version" installer.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist/MyanmarFlow.exe
+            dist/MyanmarFlow-Setup.exe
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            MyanmarFlow-Setup.exe
+            MyanmarFlow.exe
+          body: |
+            ## Download
+
+            - **MyanmarFlow-Setup.exe** — ထည့်သွင်းရန် (အကြံပြု) / Installer (recommended)
+            - **MyanmarFlow.exe** — Install မလုပ်ဘဲ တိုက်ရိုက်ဖွင့်ရန် / Portable
+
+            Setup လမ်းညွှန်: https://github.com/ThecrashO/myanmar-flow#readme

@@ -1,0 +1,780 @@
+"""Myanmar Flow - hold a hotkey, speak Burmese, release, and the text is pasted
+into whatever app has focus. Runs in the system tray; uses Google Gemini for
+transcription."""
+
+import base64
+import ctypes
+import io
+import json
+import logging
+import os
+import queue
+import sys
+import threading
+import time
+import tkinter as tk
+import wave
+import webbrowser
+import winreg
+import winsound
+from pathlib import Path
+from tkinter import ttk
+
+import keyboard
+import numpy as np
+import pyperclip
+import pystray
+import requests
+import sounddevice as sd
+from PIL import Image, ImageDraw
+
+APP_NAME = "Myanmar Flow"
+APP_VERSION = "1.0.0"
+REPO_URL = "https://github.com/ThecrashO/myanmar-flow"
+DATA_DIR = Path(os.environ.get("APPDATA", Path.home())) / "MyanmarFlow"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+CONFIG_PATH = DATA_DIR / "config.json"
+LOG_PATH = DATA_DIR / "myanmar_flow.log"
+SAMPLE_RATE = 16000
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+
+logging.basicConfig(filename=LOG_PATH, level=logging.INFO, encoding="utf-8",
+                    format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger(APP_NAME)
+
+DEFAULT_CONFIG = {
+    "api_key": "",
+    "model": "gemini-3.5-transcribe",
+    # Used only by *-transcribe models (Interactions API).
+    "language_codes": ["my-MM"],
+    "transcribe_mode": "smart",
+    "custom_vocabulary": [],
+    "hotkey": "right ctrl",
+    "min_seconds": 0.4,
+    "sounds": True,
+    # Used only by general models (generateContent), e.g. gemini-3.6-flash.
+    "prompt": (
+        "Transcribe this audio. The speaker mainly speaks Burmese (Myanmar), "
+        "possibly mixed with some English words. Write Burmese in standard "
+        "Myanmar Unicode script (not Zawgyi) and keep English words in English. "
+        "Remove filler sounds (e.g. အာ, အင်း, um) and false starts. Add natural "
+        "punctuation using ၊ and ။ for Burmese. Output ONLY the transcribed "
+        "text, with no explanations, quotes, or translations. If there is no "
+        "speech, output nothing."
+    ),
+}
+
+
+def load_config():
+    cfg = dict(DEFAULT_CONFIG)
+    if CONFIG_PATH.exists():
+        cfg.update(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
+    else:
+        save_config(cfg)
+    cfg["api_key"] = cfg["api_key"] or os.environ.get("GEMINI_API_KEY", "")
+    return cfg
+
+
+def save_config(cfg):
+    CONFIG_PATH.write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+# ---------------------------------------------------------------- audio / API
+
+class Recorder:
+    def __init__(self):
+        self.frames = []
+        self.stream = None
+        self.lock = threading.Lock()
+
+    def start(self):
+        with self.lock:
+            self.frames = []
+            self.stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16", callback=self._callback)
+            self.stream.start()
+
+    def _callback(self, indata, frames, time_info, status):
+        self.frames.append(indata.copy())
+
+    def stop(self):
+        with self.lock:
+            if self.stream is None:
+                return None
+            self.stream.stop()
+            self.stream.close()
+            self.stream = None
+            if not self.frames:
+                return None
+            return np.concatenate(self.frames)
+
+
+def to_wav_bytes(audio):
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(SAMPLE_RATE)
+        wf.writeframes(audio.tobytes())
+    return buf.getvalue()
+
+
+def transcribe(cfg, wav_bytes):
+    if "transcribe" in cfg["model"]:
+        return transcribe_interactions(cfg, wav_bytes)
+    return transcribe_generate(cfg, wav_bytes)
+
+
+def transcribe_interactions(cfg, wav_bytes):
+    """Dedicated speech-to-text models (e.g. gemini-3.5-transcribe) via the Interactions API."""
+    transcription_config = {"mode": cfg["transcribe_mode"]}
+    if cfg["language_codes"]:
+        transcription_config["language_codes"] = cfg["language_codes"]
+    if cfg["custom_vocabulary"]:
+        transcription_config["custom_vocabulary"] = cfg["custom_vocabulary"]
+    body = {
+        "model": cfg["model"],
+        "input": [{"type": "audio", "data": base64.b64encode(wav_bytes).decode(), "mime_type": "audio/wav"}],
+        "generation_config": {"transcription_config": transcription_config},
+    }
+    resp = requests.post(
+        "https://generativelanguage.googleapis.com/v1beta/interactions",
+        json=body, headers={"x-goog-api-key": cfg["api_key"]}, timeout=60,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}")
+    data = resp.json()
+    if data.get("output_text"):
+        return data["output_text"].strip()
+    texts = []
+    for step in data.get("steps", []) + data.get("outputs", []):
+        items = step.get("content", [step])
+        texts += [c.get("text", "") for c in items if c.get("type") == "text"]
+    return "".join(texts).strip()
+
+
+def transcribe_generate(cfg, wav_bytes):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{cfg['model']}:generateContent"
+    body = {
+        "contents": [{
+            "parts": [
+                {"text": cfg["prompt"]},
+                {"inline_data": {"mime_type": "audio/wav", "data": base64.b64encode(wav_bytes).decode()}},
+            ]
+        }],
+        "generationConfig": {"temperature": 0},
+    }
+    resp = requests.post(url, json=body, headers={"x-goog-api-key": cfg["api_key"]}, timeout=60)
+    if resp.status_code != 200:
+        raise RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}")
+    data = resp.json()
+    parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    return "".join(p.get("text", "") for p in parts).strip()
+
+
+def friendly_error(err):
+    """Short Burmese explanation for the floating indicator; details go to the log."""
+    msg = str(err).lower()
+    if isinstance(err, requests.ConnectionError):
+        return "အင်တာနက် ချိတ်မရပါ"
+    if isinstance(err, requests.Timeout):
+        return "အင်တာနက် နှေးလွန်းပါတယ် - ထပ်စမ်းပါ"
+    if "location is not supported" in msg:
+        return "ဒီနေရာကနေ Gemini သုံးခွင့်မရှိပါ"
+    if "api_key_invalid" in msg or "api key not valid" in msg or "error 401" in msg or "error 403" in msg:
+        return "API key မှားနေပါတယ် - Settings မှာစစ်ပါ"
+    if "error 429" in msg:
+        return "သုံးနိုင်တဲ့ အကြိမ်ရေ ပြည့်သွားပြီ - ခဏစောင့်ပါ"
+    if "error 404" in msg:
+        return "Model နာမည် မှားနေပါတယ် - Settings မှာစစ်ပါ"
+    return "Error - Log ကိုကြည့်ပါ"
+
+
+def check_api_key(api_key):
+    """Returns None if the key works from here, else a Burmese explanation."""
+    try:
+        resp = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
+                            headers={"x-goog-api-key": api_key}, timeout=20)
+    except requests.RequestException as e:
+        return friendly_error(e)
+    if resp.status_code == 200:
+        return None
+    log.warning("Key check failed %s: %s", resp.status_code, resp.text[:300])
+    return friendly_error(RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}"))
+
+
+def paste_text(text):
+    """Paste via the clipboard (reliable for Myanmar script), then restore the old clipboard."""
+    try:
+        previous = pyperclip.paste()
+    except Exception:
+        previous = None
+    pyperclip.copy(text)
+    time.sleep(0.05)
+    keyboard.send("ctrl+v")
+    time.sleep(0.3)
+    if previous is not None:
+        pyperclip.copy(previous)
+
+
+# ---------------------------------------------------------------- start with Windows
+
+def launch_command():
+    if getattr(sys, "frozen", False):
+        return f'"{sys.executable}"'
+    pythonw = Path(sys.executable).with_name("pythonw.exe")
+    return f'"{pythonw}" "{Path(__file__).resolve()}"'
+
+
+def autostart_enabled():
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            winreg.QueryValueEx(key, APP_NAME)
+            return True
+    except OSError:
+        return False
+
+
+def set_autostart(enabled):
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
+        if enabled:
+            winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, launch_command())
+        else:
+            try:
+                winreg.DeleteValue(key, APP_NAME)
+            except OSError:
+                pass
+
+
+# ---------------------------------------------------------------- icons
+
+STATE_COLORS = {
+    "idle": "#22a06b",         # on, waiting
+    "off": "#8a8f98",          # disabled
+    "recording": "#e5484d",
+    "transcribing": "#f5a524",
+}
+
+
+def make_icon(color, size=64):
+    """A round badge with a microphone glyph."""
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((2, 2, size - 2, size - 2), fill=color)
+    s = size / 64
+    w = (255, 255, 255, 255)
+    d.rounded_rectangle((25 * s, 12 * s, 39 * s, 38 * s), radius=7 * s, fill=w)
+    d.arc((18 * s, 22 * s, 46 * s, 46 * s), 0, 180, fill=w, width=max(2, int(3 * s)))
+    d.line((32 * s, 46 * s, 32 * s, 52 * s), fill=w, width=max(2, int(3 * s)))
+    d.line((24 * s, 52 * s, 40 * s, 52 * s), fill=w, width=max(2, int(3 * s)))
+    return img
+
+
+# ---------------------------------------------------------------- floating indicator
+
+GWL_EXSTYLE = -20
+WS_EX_LAYERED = 0x00080000
+WS_EX_TRANSPARENT = 0x00000020
+WS_EX_TOOLWINDOW = 0x00000080
+WS_EX_NOACTIVATE = 0x08000000
+WS_EX_TOPMOST = 0x00000008
+
+
+class Indicator:
+    """Small pill near the bottom of the screen. It is always mapped but fully
+    transparent when hidden, and never takes focus, so pasting goes to the
+    user's app, not to us."""
+
+    def __init__(self, root):
+        self.win = tk.Toplevel(root)
+        self.win.overrideredirect(True)
+        self.win.attributes("-topmost", True)
+        self.win.attributes("-alpha", 0.0)
+        self.win.configure(bg="#1f2328")
+        self.label = tk.Label(self.win, text="", fg="white", bg="#1f2328",
+                              font=("Segoe UI", 11), padx=16, pady=7)
+        self.label.pack()
+        self.win.update_idletasks()
+        hwnd = ctypes.windll.user32.GetParent(self.win.winfo_id())
+        style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        ctypes.windll.user32.SetWindowLongW(
+            hwnd, GWL_EXSTYLE,
+            style | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST)
+
+    def show(self, text, color):
+        self.label.configure(text=f"●  {text}")
+        self.label.configure(fg=color)
+        self.win.update_idletasks()
+        w, h = self.win.winfo_reqwidth(), self.win.winfo_reqheight()
+        sw, sh = self.win.winfo_screenwidth(), self.win.winfo_screenheight()
+        self.win.geometry(f"{w}x{h}+{(sw - w) // 2}+{sh - h - 90}")
+        self.win.attributes("-alpha", 0.92)
+
+    def hide(self):
+        self.win.attributes("-alpha", 0.0)
+
+
+# ---------------------------------------------------------------- settings window
+
+class SettingsWindow:
+    def __init__(self, app):
+        self.app = app
+        cfg = app.cfg
+        self.win = tk.Toplevel(app.root)
+        self.win.title(f"{APP_NAME} - Settings")
+        self.win.resizable(False, False)
+        self.win.attributes("-topmost", True)
+        frm = ttk.Frame(self.win, padding=16)
+        frm.pack(fill="both", expand=True)
+
+        self.vars = {
+            "api_key": tk.StringVar(value=cfg["api_key"]),
+            "hotkey": tk.StringVar(value=cfg["hotkey"]),
+            "model": tk.StringVar(value=cfg["model"]),
+            "language_codes": tk.StringVar(value=", ".join(cfg["language_codes"])),
+            "transcribe_mode": tk.StringVar(value=cfg["transcribe_mode"]),
+            "custom_vocabulary": tk.StringVar(value=", ".join(cfg["custom_vocabulary"])),
+        }
+        self.sounds = tk.BooleanVar(value=cfg["sounds"])
+        self.autostart = tk.BooleanVar(value=autostart_enabled())
+
+        rows = [
+            ("Gemini API key", ttk.Entry(frm, textvariable=self.vars["api_key"], show="•", width=44)),
+            ("Hotkey (ဖိထားပြီးပြောရန်)", ttk.Entry(frm, textvariable=self.vars["hotkey"], width=44)),
+            ("Model", ttk.Combobox(frm, textvariable=self.vars["model"], width=42,
+                                   values=["gemini-3.5-transcribe", "gemini-3.6-flash", "gemini-3.1-pro-preview"])),
+            ("Language codes", ttk.Entry(frm, textvariable=self.vars["language_codes"], width=44)),
+            ("Mode", ttk.Combobox(frm, textvariable=self.vars["transcribe_mode"], width=42,
+                                  values=["smart", "verbatim"], state="readonly")),
+            ("Custom words (, ခြား)", ttk.Entry(frm, textvariable=self.vars["custom_vocabulary"], width=44)),
+        ]
+        for i, (label, widget) in enumerate(rows):
+            ttk.Label(frm, text=label).grid(row=i, column=0, sticky="w", pady=4, padx=(0, 10))
+            widget.grid(row=i, column=1, sticky="we", pady=4)
+        n = len(rows)
+        link = ttk.Label(frm, text="API key ယူရန် → aistudio.google.com/apikey", foreground="#2f6feb", cursor="hand2")
+        link.grid(row=n, column=1, sticky="w")
+        link.bind("<Button-1>", lambda e: webbrowser.open("https://aistudio.google.com/apikey"))
+        ttk.Checkbutton(frm, text="Beep sounds", variable=self.sounds).grid(row=n + 1, column=1, sticky="w", pady=(8, 0))
+        ttk.Checkbutton(frm, text="Windows စဖွင့်ရင် အလိုလိုဖွင့်မယ်", variable=self.autostart).grid(
+            row=n + 2, column=1, sticky="w")
+        btns = ttk.Frame(frm)
+        btns.grid(row=n + 3, column=0, columnspan=2, sticky="e", pady=(14, 0))
+        ttk.Button(btns, text="Cancel", command=self.win.destroy).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Save", command=self.save).pack(side="right")
+
+        self.win.update_idletasks()
+        sw, sh = self.win.winfo_screenwidth(), self.win.winfo_screenheight()
+        self.win.geometry(f"+{(sw - self.win.winfo_width()) // 2}+{(sh - self.win.winfo_height()) // 3}")
+        self.win.focus_force()
+
+    def save(self):
+        split = lambda s: [x.strip() for x in s.split(",") if x.strip()]
+        cfg = dict(self.app.cfg)
+        cfg["api_key"] = self.vars["api_key"].get().strip()
+        cfg["hotkey"] = self.vars["hotkey"].get().strip() or DEFAULT_CONFIG["hotkey"]
+        cfg["model"] = self.vars["model"].get().strip() or DEFAULT_CONFIG["model"]
+        cfg["language_codes"] = split(self.vars["language_codes"].get())
+        cfg["transcribe_mode"] = self.vars["transcribe_mode"].get()
+        cfg["custom_vocabulary"] = split(self.vars["custom_vocabulary"].get())
+        cfg["sounds"] = self.sounds.get()
+        try:
+            keyboard.parse_hotkey(cfg["hotkey"])
+        except Exception:
+            tk.messagebox.showerror(APP_NAME, f"Hotkey '{cfg['hotkey']}' ကို မသိပါ။", parent=self.win)
+            return
+        try:
+            set_autostart(self.autostart.get())
+        except OSError as e:
+            log.warning("autostart: %s", e)
+        save_config(cfg)
+        self.app.apply_config(cfg)
+        self.win.destroy()
+
+
+# ---------------------------------------------------------------- first-run wizard
+
+def run_in_background(widget, func, on_done):
+    """Run func() on a thread and hand its result (or exception) to on_done on the UI thread."""
+    result = {}
+
+    def work():
+        try:
+            result["value"] = func()
+        except Exception as e:
+            result["error"] = e
+
+    thread = threading.Thread(target=work, daemon=True)
+    thread.start()
+
+    def poll():
+        if thread.is_alive():
+            widget.after(100, poll)
+        elif widget.winfo_exists():
+            on_done(result.get("value"), result.get("error"))
+
+    widget.after(100, poll)
+
+
+class SetupWizard:
+    """Three steps in Burmese: API key -> microphone test -> how to use."""
+
+    def __init__(self, app):
+        self.app = app
+        self.cfg = dict(app.cfg)
+        self.recorder = Recorder()
+        self.recording = False
+        self.win = tk.Toplevel(app.root)
+        self.win.title(f"{APP_NAME} - Setup")
+        self.win.resizable(False, False)
+        self.win.attributes("-topmost", True)
+        self.win.protocol("WM_DELETE_WINDOW", self.close)
+        self.body = ttk.Frame(self.win, padding=22)
+        self.body.pack(fill="both", expand=True)
+        self.footer = ttk.Frame(self.win, padding=(22, 0, 22, 18))
+        self.footer.pack(fill="x")
+        self.step_key()
+        sw, sh = self.win.winfo_screenwidth(), self.win.winfo_screenheight()
+        self.win.geometry(f"520x400+{(sw - 520) // 2}+{(sh - 400) // 3}")
+        self.win.focus_force()
+
+    def clear(self, step):
+        for frame in (self.body, self.footer):
+            for child in frame.winfo_children():
+                child.destroy()
+        ttk.Label(self.body, text=f"အဆင့် {step} / 3", foreground="#6b7280").pack(anchor="w")
+
+    def title(self, text):
+        ttk.Label(self.body, text=text, font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(4, 10))
+
+    def para(self, text, **kw):
+        label = ttk.Label(self.body, text=text, wraplength=470, justify="left", **kw)
+        label.pack(anchor="w", pady=3)
+        return label
+
+    # --- step 1: API key
+
+    def step_key(self):
+        self.clear(1)
+        self.title("Myanmar Flow မှ ကြိုဆိုပါတယ် 👋")
+        self.para("မြန်မာလို ပြောလိုက်တာကို စာအဖြစ် ချက်ချင်းရိုက်ပေးဖို့ Google Gemini API key တစ်ခု လိုပါတယ်။ "
+                  "အခမဲ့ ယူလို့ရပါတယ်။")
+        self.para("① အောက်က ခလုတ်ကိုနှိပ်ပြီး Google account နဲ့ ဝင်ပါ\n"
+                  "② \"Create API key\" ကိုနှိပ်ပြီး key ကို Copy ကူးပါ\n"
+                  "③ ဒီအောက်က အကွက်ထဲ Paste လုပ်ပြီး \"စစ်ဆေးမယ်\" နှိပ်ပါ")
+        ttk.Button(self.body, text="🔑  API key ယူရန် (aistudio.google.com)",
+                   command=lambda: webbrowser.open("https://aistudio.google.com/apikey")).pack(anchor="w", pady=8)
+        self.key_var = tk.StringVar(value=self.cfg["api_key"])
+        entry = ttk.Entry(self.body, textvariable=self.key_var, show="•", width=60)
+        entry.pack(anchor="w", fill="x")
+        entry.focus_set()
+        self.key_status = self.para("")
+        self.check_btn = ttk.Button(self.footer, text="စစ်ဆေးမယ် →", command=self.check_key)
+        self.check_btn.pack(side="right")
+        entry.bind("<Return>", lambda e: self.check_key())
+
+    def check_key(self):
+        key = self.key_var.get().strip()
+        if not key:
+            self.key_status.configure(text="Key ကို အရင် Paste လုပ်ပါ", foreground="#e5484d")
+            return
+        self.check_btn.configure(state="disabled")
+        self.key_status.configure(text="စစ်နေပါတယ်...", foreground="#6b7280")
+
+        def done(problem, error):
+            self.check_btn.configure(state="normal")
+            problem = problem or (friendly_error(error) if error else None)
+            if problem:
+                hint = ""
+                if "သုံးခွင့်မရှိ" in problem:
+                    hint = "\n(Google က ဒီနိုင်ငံ/ဒေသကို Gemini ခွင့်မပြုသေးပါ)"
+                self.key_status.configure(text=f"❌ {problem}{hint}", foreground="#e5484d")
+                return
+            self.cfg["api_key"] = key
+            save_config(self.cfg)
+            self.app.apply_config(self.cfg)
+            self.step_mic()
+
+        run_in_background(self.win, lambda: check_api_key(key), done)
+
+    # --- step 2: microphone test
+
+    def step_mic(self):
+        self.clear(2)
+        self.title("✅ Key အဆင်ပြေပါတယ်။ Mic စမ်းကြည့်ရအောင်")
+        self.para("\"စပြောမယ်\" ကိုနှိပ်ပြီး \"မင်္ဂလာပါ\" လို့ ပြောကြည့်ပါ။ ပြီးရင် \"ရပ်မယ်\" ကိုနှိပ်ပါ။")
+        self.mic_btn = ttk.Button(self.body, text="🎙  စပြောမယ်", command=self.toggle_mic)
+        self.mic_btn.pack(anchor="w", pady=10)
+        self.mic_result = self.para("", font=("Segoe UI", 12))
+        ttk.Button(self.footer, text="ရှေ့ဆက်မယ် →", command=self.step_done).pack(side="right")
+        ttk.Button(self.footer, text="ကျော်မယ်", command=self.step_done).pack(side="right", padx=6)
+
+    def toggle_mic(self):
+        if not self.recording:
+            try:
+                self.recorder.start()
+            except Exception as e:
+                log.error("Mic test: %s", e)
+                self.mic_result.configure(text="❌ Mic ကို ဖွင့်လို့မရပါ။ Windows Settings → Privacy → Microphone ကို စစ်ပါ",
+                                          foreground="#e5484d")
+                return
+            self.recording = True
+            self.mic_btn.configure(text="⏹  ရပ်မယ်")
+            self.mic_result.configure(text="နားထောင်နေတယ်...", foreground="#e5484d")
+            return
+        self.recording = False
+        audio = self.recorder.stop()
+        self.mic_btn.configure(text="🎙  စပြောမယ်", state="disabled")
+        if audio is None or int(np.abs(audio).max()) < 300:
+            self.mic_btn.configure(state="normal")
+            self.mic_result.configure(text="❌ အသံ မကြားရပါ။ Mic ချိတ်ထားလား၊ အသံတိုးနေလား စစ်ပါ", foreground="#e5484d")
+            return
+        self.mic_result.configure(text="စာပြောင်းနေတယ်...", foreground="#f5a524")
+
+        def done(text, error):
+            self.mic_btn.configure(state="normal")
+            if error:
+                log.error("Mic test: %s", error)
+                self.mic_result.configure(text=f"❌ {friendly_error(error)}", foreground="#e5484d")
+            elif not text:
+                self.mic_result.configure(text="စကားသံ မတွေ့ပါ။ ထပ်ပြောကြည့်ပါ", foreground="#e5484d")
+            else:
+                self.mic_result.configure(text=f"✅ \"{text}\"", foreground="#22a06b")
+
+        run_in_background(self.win, lambda: transcribe(self.cfg, to_wav_bytes(audio)), done)
+
+    # --- step 3: how to use
+
+    def step_done(self):
+        if self.recording:
+            self.recording = False
+            self.recorder.stop()
+        self.clear(3)
+        self.title("🎉 အဆင်သင့်ဖြစ်ပါပြီ")
+        hotkey = self.cfg["hotkey"]
+        self.para(f"ဘယ် app မှာမဆို (Facebook, Messenger, Word, Gmail ...) စာရိုက်ချင်တဲ့နေရာကို နှိပ်ထားပြီး\n\n"
+                  f"     ⌨  [{hotkey}] ကို ဖိထား  →  🎙 ပြော  →  လွှတ်လိုက်\n\n"
+                  "ပြောတာတွေ စာအဖြစ် အလိုလို ဝင်လာပါမယ်။")
+        self.para("နာရီဘေးက 🟢 icon ကိုနှိပ်ရင် ဖွင့်/ပိတ် လုပ်လို့ရပါတယ်။ Right-click နှိပ်ရင် Settings နဲ့ အကူအညီ ရှိပါတယ်။",
+                  foreground="#6b7280")
+        self.autostart = tk.BooleanVar(value=True)
+        ttk.Checkbutton(self.body, text="Windows စဖွင့်ရင် အလိုလိုဖွင့်မယ်", variable=self.autostart).pack(anchor="w", pady=8)
+        ttk.Button(self.footer, text="ပြီးပါပြီ ✓", command=self.finish).pack(side="right")
+
+    def finish(self):
+        try:
+            set_autostart(self.autostart.get())
+        except OSError as e:
+            log.warning("autostart: %s", e)
+        self.close()
+
+    def close(self):
+        if self.recording:
+            self.recording = False
+            self.recorder.stop()
+        self.win.destroy()
+
+
+# ---------------------------------------------------------------- app
+
+class App:
+    def __init__(self):
+        self.cfg = load_config()
+        self.recorder = Recorder()
+        self.enabled = True
+        self.recording = False
+        self.started_at = 0.0
+        self.ui = queue.Queue()
+        self.hook = None
+        self.scan_codes = set()
+        self.settings = None
+        self.wizard = None
+
+        self.root = tk.Tk()
+        self.root.withdraw()
+        self.root.report_callback_exception = lambda *exc: log.error("UI error", exc_info=exc)
+        self.indicator = Indicator(self.root)
+        self.icons = {k: make_icon(c) for k, c in STATE_COLORS.items()}
+        self.tray = pystray.Icon(APP_NAME, self.icons["idle"], APP_NAME, menu=pystray.Menu(
+            pystray.MenuItem(lambda _: "ပိတ်ရန် (Turn off)" if self.enabled else "ဖွင့်ရန် (Turn on)",
+                             self.toggle_enabled, default=True),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Settings...", lambda: self.ui.put(("settings",))),
+            pystray.MenuItem("Setup wizard...", lambda: self.ui.put(("wizard",))),
+            pystray.MenuItem("အကူအညီ (Help)", lambda: webbrowser.open(f"{REPO_URL}#readme")),
+            pystray.MenuItem("ပြဿနာတင်ပြရန် (Report a problem)", lambda: webbrowser.open(f"{REPO_URL}/issues")),
+            pystray.MenuItem("Log ဖိုင်ဖွင့်ရန်", lambda: os.startfile(LOG_PATH)),
+            pystray.MenuItem(f"Version {APP_VERSION}", None, enabled=False),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Quit", self.quit),
+        ))
+
+    # --- state
+
+    def set_state(self, state, text=None):
+        self.tray.icon = self.icons[state]
+        hotkey = self.cfg["hotkey"]
+        self.tray.title = {
+            "idle": f"{APP_NAME} - On  ([{hotkey}] ဖိပြီးပြောပါ)",
+            "off": f"{APP_NAME} - Off",
+            "recording": f"{APP_NAME} - Recording...",
+            "transcribing": f"{APP_NAME} - Transcribing...",
+        }[state]
+        self.ui.put(("indicator", state, text))
+
+    def beep(self, freq, ms):
+        if self.cfg["sounds"]:
+            threading.Thread(target=winsound.Beep, args=(freq, ms), daemon=True).start()
+
+    def toggle_enabled(self, *_):
+        self.enabled = not self.enabled
+        if not self.enabled and self.recording:
+            self.recording = False
+            self.recorder.stop()
+        self.set_state("idle" if self.enabled else "off")
+        self.tray.update_menu()
+
+    def apply_config(self, cfg):
+        self.cfg = cfg
+        self.bind_hotkey()
+        self.set_state("idle" if self.enabled else "off")
+
+    def bind_hotkey(self):
+        # One global hook filtered by scan code: keyboard.on_press_key/on_release_key
+        # share an internal entry per key, so unhooking both raises KeyError.
+        if self.hook:
+            keyboard.unhook(self.hook)
+        self.scan_codes = set(keyboard.key_to_scan_codes(self.cfg["hotkey"]))
+        self.hook = keyboard.hook(self.on_key)
+
+    # --- hotkey handlers (keyboard hook thread)
+
+    def on_key(self, event):
+        # Match by name too: "right ctrl" shares scan code 29 with left ctrl.
+        if event.scan_code not in self.scan_codes or (event.name or "").lower() != self.cfg["hotkey"].lower():
+            return
+        if event.event_type == keyboard.KEY_DOWN:
+            self.on_press(event)
+        else:
+            self.on_release(event)
+
+    def on_press(self, _event):
+        if not self.enabled or self.recording:
+            return
+        if not self.cfg["api_key"]:
+            self.ui.put(("wizard",))
+            return
+        self.recording = True
+        self.started_at = time.time()
+        try:
+            self.recorder.start()
+        except Exception as e:
+            self.recording = False
+            log.error("Microphone error: %s", e)
+            self.set_state("idle", "Microphone error")
+            return
+        self.beep(880, 70)
+        self.set_state("recording")
+
+    def on_release(self, _event):
+        if not self.recording:
+            return
+        self.recording = False
+        audio = self.recorder.stop()
+        self.beep(600, 70)
+        if audio is None or time.time() - self.started_at < self.cfg["min_seconds"]:
+            self.set_state("idle")
+            return
+        self.set_state("transcribing")
+        threading.Thread(target=self.process, args=(audio,), daemon=True).start()
+
+    def process(self, audio):
+        try:
+            text = transcribe(self.cfg, to_wav_bytes(audio))
+        except Exception as e:
+            log.error("%s", e)
+            self.beep(300, 250)
+            self.set_state("idle", friendly_error(e))
+            return
+        if text:
+            log.info("Transcribed: %s", text)
+            paste_text(text)
+        self.set_state("idle" if self.enabled else "off")
+
+    # --- UI thread
+
+    def pump_ui(self):
+        try:
+            while True:
+                msg = self.ui.get_nowait()
+                if msg[0] == "indicator":
+                    _, state, text = msg
+                    if state == "recording":
+                        self.indicator.show("နားထောင်နေတယ်...", STATE_COLORS["recording"])
+                    elif state == "transcribing":
+                        self.indicator.show("စာပြောင်းနေတယ်...", STATE_COLORS["transcribing"])
+                    elif text:
+                        self.indicator.show(text, STATE_COLORS["recording"])
+                        self.root.after(2500, self.indicator.hide)
+                    else:
+                        self.indicator.hide()
+                elif msg[0] == "settings":
+                    self.open_settings()
+                elif msg[0] == "wizard":
+                    self.open_wizard()
+                elif msg[0] == "quit":
+                    self.root.destroy()
+                    return
+        except queue.Empty:
+            pass
+        self.root.after(50, self.pump_ui)
+
+    def open_settings(self):
+        if self.settings and self.settings.win.winfo_exists():
+            self.settings.win.lift()
+            self.settings.win.focus_force()
+            return
+        self.settings = SettingsWindow(self)
+
+    def open_wizard(self):
+        if self.wizard and self.wizard.win.winfo_exists():
+            self.wizard.win.lift()
+            self.wizard.win.focus_force()
+            return
+        self.wizard = SetupWizard(self)
+
+    def quit(self, *_):
+        self.tray.stop()
+        keyboard.unhook_all()
+        self.ui.put(("quit",))
+
+    def run(self):
+        self.bind_hotkey()
+        self.tray.run_detached()
+        self.set_state("idle")
+        if not self.cfg["api_key"]:
+            self.ui.put(("wizard",))
+        else:
+            self.tray.notify(f"[{self.cfg['hotkey']}] ကို ဖိထားပြီး ပြောပါ။", APP_NAME)
+        self.root.after(50, self.pump_ui)
+        self.root.mainloop()
+
+
+def already_running():
+    ctypes.windll.kernel32.CreateMutexW(None, False, "MyanmarFlowSingleInstance")
+    return ctypes.windll.kernel32.GetLastError() == 183  # ERROR_ALREADY_EXISTS
+
+
+def main():
+    import tkinter.messagebox  # noqa: F401  (used by SettingsWindow)
+    if already_running():
+        ctypes.windll.user32.MessageBoxW(None, "Myanmar Flow က ဖွင့်ထားပြီးသားပါ (tray မှာကြည့်ပါ)။", APP_NAME, 0x40)
+        return
+    try:
+        App().run()
+    except Exception:
+        log.exception("Fatal error")
+        raise
+
+
+if __name__ == "__main__":
+    main()
