@@ -3,10 +3,12 @@ into whatever app has focus. Runs in the system tray; uses Google Gemini for
 transcription."""
 
 import base64
+import contextlib
 import ctypes
 import io
 import json
 import logging
+import math
 import os
 import queue
 import sys
@@ -17,6 +19,8 @@ import wave
 import webbrowser
 import winreg
 import winsound
+from collections import deque
+from ctypes import wintypes
 from pathlib import Path
 from tkinter import ttk
 
@@ -26,10 +30,10 @@ import pyperclip
 import pystray
 import requests
 import sounddevice as sd
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, features
 
 APP_NAME = "Myanmar Flow"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 REPO_URL = "https://github.com/ThecrashO/myanmar-flow"
 DATA_DIR = Path(os.environ.get("APPDATA", Path.home())) / "MyanmarFlow"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -86,15 +90,19 @@ class Recorder:
         self.frames = []
         self.stream = None
         self.lock = threading.Lock()
+        self.level = 0.0  # 0..1 loudness of the latest chunk, for the waveform
 
     def start(self):
         with self.lock:
             self.frames = []
+            self.level = 0.0
             self.stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16", callback=self._callback)
             self.stream.start()
 
     def _callback(self, indata, frames, time_info, status):
         self.frames.append(indata.copy())
+        rms = float(np.sqrt(np.mean(indata.astype(np.float32) ** 2))) / 32768
+        self.level = min(1.0, max(0.0, (20 * math.log10(rms + 1e-6) + 52) / 40))
 
     def stop(self):
         with self.lock:
@@ -271,46 +279,302 @@ def make_icon(color, size=64):
 
 # ---------------------------------------------------------------- floating indicator
 
-GWL_EXSTYLE = -20
+WS_POPUP = 0x80000000
 WS_EX_LAYERED = 0x00080000
 WS_EX_TRANSPARENT = 0x00000020
 WS_EX_TOOLWINDOW = 0x00000080
 WS_EX_NOACTIVATE = 0x08000000
 WS_EX_TOPMOST = 0x00000008
 
+user32 = ctypes.windll.user32
+gdi32 = ctypes.windll.gdi32
+user32.CreateWindowExW.restype = wintypes.HWND
+user32.CreateWindowExW.argtypes = [wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+                                   ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                                   wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID]
+user32.GetDC.restype = wintypes.HDC
+user32.GetDC.argtypes = [wintypes.HWND]
+user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
+user32.GetForegroundWindow.restype = wintypes.HWND
+user32.MonitorFromWindow.restype = wintypes.HMONITOR
+user32.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
+user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                                ctypes.c_int, ctypes.c_int, wintypes.UINT]
+user32.UpdateLayeredWindow.argtypes = [wintypes.HWND, wintypes.HDC, ctypes.c_void_p, ctypes.c_void_p,
+                                       wintypes.HDC, ctypes.c_void_p, wintypes.COLORREF, ctypes.c_void_p,
+                                       wintypes.DWORD]
+gdi32.CreateCompatibleDC.restype = wintypes.HDC
+gdi32.CreateCompatibleDC.argtypes = [wintypes.HDC]
+gdi32.CreateDIBSection.restype = wintypes.HBITMAP
+gdi32.CreateDIBSection.argtypes = [wintypes.HDC, ctypes.c_void_p, wintypes.UINT,
+                                   ctypes.POINTER(ctypes.c_void_p), wintypes.HANDLE, wintypes.DWORD]
+gdi32.SelectObject.restype = wintypes.HGDIOBJ
+gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HGDIOBJ]
+gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
+gdi32.DeleteDC.argtypes = [wintypes.HDC]
+try:
+    user32.SetThreadDpiAwarenessContext.restype = ctypes.c_void_p
+    user32.SetThreadDpiAwarenessContext.argtypes = [ctypes.c_void_p]
+except AttributeError:  # Windows older than 10 1607
+    pass
+
+
+class BITMAPINFOHEADER(ctypes.Structure):
+    _fields_ = [("biSize", wintypes.DWORD), ("biWidth", wintypes.LONG), ("biHeight", wintypes.LONG),
+                ("biPlanes", wintypes.WORD), ("biBitCount", wintypes.WORD), ("biCompression", wintypes.DWORD),
+                ("biSizeImage", wintypes.DWORD), ("biXPelsPerMeter", wintypes.LONG),
+                ("biYPelsPerMeter", wintypes.LONG), ("biClrUsed", wintypes.DWORD), ("biClrImportant", wintypes.DWORD)]
+
+
+class BLENDFUNCTION(ctypes.Structure):
+    _fields_ = [("BlendOp", ctypes.c_ubyte), ("BlendFlags", ctypes.c_ubyte),
+                ("SourceConstantAlpha", ctypes.c_ubyte), ("AlphaFormat", ctypes.c_ubyte)]
+
+
+class MONITORINFO(ctypes.Structure):
+    _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT),
+                ("rcWork", wintypes.RECT), ("dwFlags", wintypes.DWORD)]
+
+
+@contextlib.contextmanager
+def dpi_aware():
+    """Talk to Win32 in real pixels so the overlay is crisp on scaled displays."""
+    old = None
+    try:
+        old = user32.SetThreadDpiAwarenessContext(ctypes.c_void_p(-4))  # per-monitor v2
+    except AttributeError:
+        pass
+    try:
+        yield
+    finally:
+        if old:
+            user32.SetThreadDpiAwarenessContext(ctypes.c_void_p(old))
+
+
+FONTS_DIR = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+HAS_RAQM = features.check("raqm")  # complex-script shaping, needed to draw Burmese
+SUPERSAMPLE = 3
+BARS = 21
+PILL_BG = (20, 20, 23)
+PILL_BORDER = (58, 58, 64)
+WHITE = (245, 245, 247)
+MUTED = (150, 150, 158)
+DIM = (92, 92, 100)
+RED = (229, 72, 77)
+ORANGE = (245, 165, 36)
+GREEN = (34, 160, 107)
+
+
+def mix(fg, bg, t):
+    """Blend fg over bg by t (ImageDraw overwrites alpha instead of blending)."""
+    return tuple(int(b + (f - b) * t) for f, b in zip(fg, bg)) + (255,)
+
 
 class Indicator:
-    """Small pill near the bottom of the screen. It is always mapped but fully
-    transparent when hidden, and never takes focus, so pasting goes to the
-    user's app, not to us."""
+    """Wispr-style pill near the bottom of the screen: live waveform and timer
+    while recording, a spinner while transcribing, a check when done.
 
-    def __init__(self, root):
-        self.win = tk.Toplevel(root)
-        self.win.overrideredirect(True)
-        self.win.attributes("-topmost", True)
-        self.win.attributes("-alpha", 0.0)
-        self.win.configure(bg="#1f2328")
-        self.label = tk.Label(self.win, text="", fg="white", bg="#1f2328",
-                              font=("Segoe UI", 11), padx=16, pady=7)
-        self.label.pack()
-        self.win.update_idletasks()
-        hwnd = ctypes.windll.user32.GetParent(self.win.winfo_id())
-        style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-        ctypes.windll.user32.SetWindowLongW(
-            hwnd, GWL_EXSTYLE,
-            style | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST)
+    Drawn with Pillow (anti-aliased, soft shadow) into a per-pixel-alpha layered
+    window that is click-through and never takes focus, so the paste still goes
+    to the user's app."""
 
-    def show(self, text, color):
-        self.label.configure(text=f"●  {text}")
-        self.label.configure(fg=color)
-        self.win.update_idletasks()
-        w, h = self.win.winfo_reqwidth(), self.win.winfo_reqheight()
-        sw, sh = self.win.winfo_screenwidth(), self.win.winfo_screenheight()
-        self.win.geometry(f"{w}x{h}+{(sw - w) // 2}+{sh - h - 90}")
-        self.win.attributes("-alpha", 0.92)
+    H = 40        # pill height, logical px
+    MARGIN = 14   # room around the pill for the shadow
 
-    def hide(self):
-        self.win.attributes("-alpha", 0.0)
+    def __init__(self, root, level_fn):
+        self.root = root
+        self.level_fn = level_fn
+        self.mode = None
+        self.text = ""
+        self.alpha = 0.0
+        self.target = 0.0
+        self.hide_at = None
+        self.started = 0.0
+        self.smoothed = 0.0
+        self.levels = deque([0.0] * BARS, maxlen=BARS)
+        self.visible = False
+        self.anchor = (0, 0, 1.0)  # centre x, bottom y (physical px), scale
+        self.bases = {}
+        self.fonts = {}
+        with dpi_aware():
+            self.hwnd = user32.CreateWindowExW(
+                WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST,
+                "STATIC", None, WS_POPUP, 0, 0, 1, 1, None, None, None, None)
+        self.root.after(30, self.tick)
+
+    # --- state
+
+    def set_state(self, state, text=None):
+        now = time.time()
+        if state in ("recording", "transcribing", "done") or text:
+            if self.target == 0.0:
+                self.locate()
+            self.target = 1.0
+            self.hide_at = None
+        if state == "recording":
+            self.mode, self.started = "recording", now
+            self.levels.extend([0.0] * BARS)
+        elif state == "transcribing":
+            self.mode, self.started = "transcribing", now
+        elif state == "done":
+            self.mode, self.started, self.hide_at = "done", now, now + 0.7
+        elif text:
+            self.mode, self.text, self.hide_at = "error", text, now + 3.5
+        else:
+            self.target = 0.0
+
+    def locate(self):
+        """Bottom centre of the work area of the monitor the user is typing on."""
+        with dpi_aware():
+            mon = user32.MonitorFromWindow(user32.GetForegroundWindow(), 2)  # MONITOR_DEFAULTTONEAREST
+            info = MONITORINFO()
+            info.cbSize = ctypes.sizeof(MONITORINFO)
+            user32.GetMonitorInfoW(mon, ctypes.byref(info))
+            dpi_x, dpi_y = ctypes.c_uint(96), ctypes.c_uint(96)
+            try:
+                ctypes.windll.shcore.GetDpiForMonitor(mon, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
+            except (AttributeError, OSError):
+                pass
+        scale = dpi_x.value / 96
+        r = info.rcWork
+        self.anchor = ((r.left + r.right) // 2, r.bottom - int(24 * scale), scale)
+
+    # --- animation loop (Tk thread)
+
+    def tick(self):
+        now = time.time()
+        if self.hide_at and now >= self.hide_at:
+            self.target, self.hide_at = 0.0, None
+        if self.mode == "recording" and self.target:
+            self.smoothed = max(self.level_fn(), self.smoothed * 0.62)
+            self.levels.append(self.smoothed)
+        self.alpha += (self.target - self.alpha) * 0.3
+        if abs(self.target - self.alpha) < 0.02:
+            self.alpha = self.target
+        if self.alpha <= 0.0:
+            if self.visible:
+                user32.ShowWindow(self.hwnd, 0)  # SW_HIDE
+                self.visible = False
+            self.root.after(80, self.tick)
+            return
+        try:
+            self.present(self.compose(now, self.anchor[2]))
+        except Exception:
+            log.exception("indicator")
+        self.root.after(25, self.tick)
+
+    # --- drawing
+
+    def font(self, name, size, k):
+        key = (name, size, k)
+        if key not in self.fonts:
+            engine = ImageFont.Layout.RAQM if HAS_RAQM else ImageFont.Layout.BASIC
+            try:
+                self.fonts[key] = ImageFont.truetype(str(FONTS_DIR / name), max(1, int(size * k)), layout_engine=engine)
+            except OSError:
+                self.fonts[key] = ImageFont.load_default(max(1, int(size * k)))
+        return self.fonts[key]
+
+    def width(self, k):
+        if self.mode == "error":
+            text_w = self.font("mmrtext.ttf", 13, k).getlength(self.text) / k if HAS_RAQM else 0
+            return int(52 + text_w + 18)
+        return 204
+
+    def base(self, w, k):
+        """Shadow + pill background, cached per size."""
+        key = (w, k)
+        if key not in self.bases:
+            if len(self.bases) > 8:
+                self.bases.clear()
+            m, h = self.MARGIN, self.H
+            size = (int((w + 2 * m) * k), int((h + 2 * m) * k))
+            img = Image.new("RGBA", size, (0, 0, 0, 0))
+            ImageDraw.Draw(img).rounded_rectangle((m * k, (m + 4) * k, (m + w) * k, (m + h + 4) * k),
+                                                  radius=h / 2 * k, fill=(0, 0, 0, 120))
+            img = img.filter(ImageFilter.GaussianBlur(7 * k))
+            d = ImageDraw.Draw(img)
+            d.rounded_rectangle((m * k, m * k, (m + w) * k, (m + h) * k), radius=h / 2 * k, fill=PILL_BORDER + (255,))
+            d.rounded_rectangle(((m + 1) * k, (m + 1) * k, (m + w - 1) * k, (m + h - 1) * k),
+                                radius=(h / 2 - 1) * k, fill=PILL_BG + (255,))
+            self.bases[key] = img
+        return self.bases[key]
+
+    def compose(self, now, scale):
+        k = scale * SUPERSAMPLE
+        w = self.width(k)
+        img = self.base(w, k).copy()
+        d = ImageDraw.Draw(img)
+        ox, cy = self.MARGIN * k, (self.MARGIN + self.H / 2) * k
+
+        def at(x):
+            return ox + x * k
+
+        def bars(heights, color):
+            for i, h in enumerate(heights):
+                x = 36 + i * 6
+                d.rounded_rectangle((at(x), cy - h / 2 * k, at(x + 3), cy + h / 2 * k), radius=1.5 * k, fill=color)
+
+        t = now - self.started
+        if self.mode == "recording":
+            pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.cos(t * 5))
+            d.ellipse((at(20 - 5), cy - 5 * k, at(20 + 5), cy + 5 * k), fill=mix(RED, PILL_BG, pulse))
+            bars([3 + lvl * 21 for lvl in self.levels], WHITE + (255,))
+            d.text((at(w - 18), cy), f"{int(t) // 60}:{int(t) % 60:02d}",
+                   font=self.font("segoeui.ttf", 12, k), fill=MUTED + (255,), anchor="rm")
+        elif self.mode == "transcribing":
+            start = (t * 400) % 360
+            d.arc((at(20 - 7), cy - 7 * k, at(20 + 7), cy + 7 * k), start, start + 260,
+                  fill=ORANGE + (255,), width=max(1, int(2.2 * k)))
+            bars([3 + 7 * (0.5 + 0.5 * math.sin(t * 7 - i * 0.45)) for i in range(BARS)], DIM + (255,))
+        elif self.mode == "done":
+            d.ellipse((at(20 - 8), cy - 8 * k, at(20 + 8), cy + 8 * k), fill=GREEN + (255,))
+            d.line([(at(16), cy), (at(19), cy + 3 * k), (at(24.5), cy - 3.5 * k)],
+                   fill=WHITE + (255,), width=max(1, int(2.2 * k)), joint="curve")
+            fade = max(0.0, 1 - t / 0.3)
+            bars([3 + 4 * fade] * BARS, mix(DIM, PILL_BG, 0.7))
+        elif self.mode == "error":
+            d.ellipse((at(20 - 8), cy - 8 * k, at(20 + 8), cy + 8 * k), fill=RED + (255,))
+            d.text((at(20), cy), "!", font=self.font("segoeuib.ttf", 12, k), fill=WHITE + (255,), anchor="mm")
+            if HAS_RAQM:
+                d.text((at(38), cy), self.text, font=self.font("mmrtext.ttf", 13, k), fill=WHITE + (255,), anchor="lm")
+
+        final = (round(img.width / SUPERSAMPLE), round(img.height / SUPERSAMPLE))
+        return img.resize(final, Image.LANCZOS)
+
+    def present(self, img):
+        """Push a premultiplied BGRA bitmap to the layered window (UpdateLayeredWindow)."""
+        cx, bottom, scale = self.anchor
+        w, h = img.size
+        x = cx - w // 2
+        y = bottom - h + int((1 - self.alpha) * 10 * scale)  # slight rise while fading in
+        rgba = np.asarray(img, dtype=np.uint16)
+        a = rgba[..., 3]
+        bgra = np.dstack([rgba[..., 2] * a // 255, rgba[..., 1] * a // 255, rgba[..., 0] * a // 255, a])
+        data = np.ascontiguousarray(bgra, dtype=np.uint8).tobytes()
+
+        header = BITMAPINFOHEADER(biSize=ctypes.sizeof(BITMAPINFOHEADER), biWidth=w, biHeight=-h,
+                                  biPlanes=1, biBitCount=32, biCompression=0)
+        with dpi_aware():
+            screen = user32.GetDC(None)
+            mem = gdi32.CreateCompatibleDC(screen)
+            bits = ctypes.c_void_p()
+            bmp = gdi32.CreateDIBSection(mem, ctypes.byref(header), 0, ctypes.byref(bits), None, 0)
+            ctypes.memmove(bits, data, len(data))
+            old = gdi32.SelectObject(mem, bmp)
+            blend = BLENDFUNCTION(0, 0, int(255 * self.alpha), 1)  # AC_SRC_OVER, AC_SRC_ALPHA
+            user32.UpdateLayeredWindow(self.hwnd, screen, ctypes.byref(wintypes.POINT(x, y)),
+                                       ctypes.byref(wintypes.SIZE(w, h)), mem,
+                                       ctypes.byref(wintypes.POINT(0, 0)), 0, ctypes.byref(blend), 2)  # ULW_ALPHA
+            if not self.visible:
+                user32.ShowWindow(self.hwnd, 4)  # SW_SHOWNOACTIVATE
+                user32.SetWindowPos(self.hwnd, wintypes.HWND(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
+                self.visible = True
+            gdi32.SelectObject(mem, old)
+            gdi32.DeleteObject(bmp)
+            gdi32.DeleteDC(mem)
+            user32.ReleaseDC(None, screen)
 
 
 # ---------------------------------------------------------------- settings window
@@ -592,7 +856,7 @@ class App:
         self.root = tk.Tk()
         self.root.withdraw()
         self.root.report_callback_exception = lambda *exc: log.error("UI error", exc_info=exc)
-        self.indicator = Indicator(self.root)
+        self.indicator = Indicator(self.root, lambda: self.recorder.level)
         self.icons = {k: make_icon(c) for k, c in STATE_COLORS.items()}
         self.tray = pystray.Icon(APP_NAME, self.icons["idle"], APP_NAME, menu=pystray.Menu(
             pystray.MenuItem(lambda _: "ပိတ်ရန် (Turn off)" if self.enabled else "ဖွင့်ရန် (Turn on)",
@@ -611,14 +875,16 @@ class App:
     # --- state
 
     def set_state(self, state, text=None):
-        self.tray.icon = self.icons[state]
+        """state: idle | off | recording | transcribing | done; text = error to show."""
+        tray_state = "idle" if state == "done" else state
+        self.tray.icon = self.icons[tray_state]
         hotkey = self.cfg["hotkey"]
         self.tray.title = {
             "idle": f"{APP_NAME} - On  ([{hotkey}] ဖိပြီးပြောပါ)",
             "off": f"{APP_NAME} - Off",
             "recording": f"{APP_NAME} - Recording...",
             "transcribing": f"{APP_NAME} - Transcribing...",
-        }[state]
+        }[tray_state]
         self.ui.put(("indicator", state, text))
 
     def beep(self, freq, ms):
@@ -670,7 +936,7 @@ class App:
         except Exception as e:
             self.recording = False
             log.error("Microphone error: %s", e)
-            self.set_state("idle", "Microphone error")
+            self.set_state("idle", "Mic ဖွင့်လို့မရပါ")
             return
         self.beep(880, 70)
         self.set_state("recording")
@@ -698,7 +964,7 @@ class App:
         if text:
             log.info("Transcribed: %s", text)
             paste_text(text)
-        self.set_state("idle" if self.enabled else "off")
+        self.set_state(("done" if text else "idle") if self.enabled else "off")
 
     # --- UI thread
 
@@ -707,16 +973,7 @@ class App:
             while True:
                 msg = self.ui.get_nowait()
                 if msg[0] == "indicator":
-                    _, state, text = msg
-                    if state == "recording":
-                        self.indicator.show("နားထောင်နေတယ်...", STATE_COLORS["recording"])
-                    elif state == "transcribing":
-                        self.indicator.show("စာပြောင်းနေတယ်...", STATE_COLORS["transcribing"])
-                    elif text:
-                        self.indicator.show(text, STATE_COLORS["recording"])
-                        self.root.after(2500, self.indicator.hide)
-                    else:
-                        self.indicator.hide()
+                    self.indicator.set_state(msg[1], msg[2])
                 elif msg[0] == "settings":
                     self.open_settings()
                 elif msg[0] == "wizard":
@@ -769,6 +1026,7 @@ def main():
     if already_running():
         ctypes.windll.user32.MessageBoxW(None, "Myanmar Flow က ဖွင့်ထားပြီးသားပါ (tray မှာကြည့်ပါ)။", APP_NAME, 0x40)
         return
+    log.info("Starting %s %s (burmese text shaping: %s)", APP_NAME, APP_VERSION, HAS_RAQM)
     try:
         App().run()
     except Exception:
