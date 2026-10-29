@@ -1,86 +1,69 @@
 # Myanmar Flow 🎙️
 
-**မြန်မာလို ပြောလိုက်တာကို ဘယ် app မှာမဆို စာအဖြစ် ချက်ချင်း ရိုက်ပေးတဲ့ Windows tool။**
+**မြန်မာလို ပြောလိုက်တာကို ဘယ် app မှာမဆို စာအဖြစ် ချက်ချင်း ရိုက်ပေးတဲ့ Windows program။**
 
-Key တစ်ခုကို ဖိထား → မြန်မာလို ပြော → လွှတ်လိုက် → စာဝင်လာပြီ။
-Facebook, Messenger, Word, Gmail, Notepad... cursor ရှိတဲ့နေရာတိုင်းမှာ သုံးလို့ရပါတယ်။
+Key ကို ဖိထား → မြန်မာလို ပြော → လွှတ်လိုက် → စာဝင်လာပြီ ✅
+Facebook, Messenger, Viber, Gmail, Word ... cursor ရှိတဲ့နေရာတိုင်းမှာ သုံးလို့ရပါတယ်။
 
-*Voice dictation for Burmese on Windows — hold a key, speak, release, and the text is typed wherever your cursor is. Powered by Google Gemini. [English below](#english).*
+![Myanmar Flow pill](docs/images/pill-states.png)
+
+*Voice dictation for Burmese on Windows. [English below](#english).*
+
+---
+
+## ⬇️ Download
+
+### 👉 [**MyanmarFlow-Setup.exe ကို download လုပ်ရန်**](https://github.com/ThecrashO/myanmar-flow/releases/latest)
+
+(စာမျက်နှာအောက်က **Assets** ထဲမှာ `MyanmarFlow-Setup.exe` ကို နှိပ်ပါ) · Windows 10 / 11 · အခမဲ့
+
+## 📘 [အသုံးပြုနည်း လမ်းညွှန် အပြည့်အစုံ (မြန်မာလို) →](docs/GUIDE.md)
+
+Install လုပ်နည်း၊ API key ယူနည်း၊ နေ့စဉ်သုံးနည်း၊ Settings၊ ပြဿနာဖြေရှင်းနည်း — ပုံတွေနဲ့ အဆင့်လိုက် ရှင်းပြထားပါတယ်။
 
 ---
 
-## ⬇️ ဒေါင်းလုဒ်
+## 🚀 ၃ မိနစ်နဲ့ စသုံးမယ်
 
-**[👉 Releases စာမျက်နှာမှ နောက်ဆုံး version ကို ဒေါင်းပါ](https://github.com/ThecrashO/myanmar-flow/releases/latest)**
+1. **Download & Install** — `MyanmarFlow-Setup.exe` ကိုဖွင့်ပါ။ အပြာရောင် box ပေါ်ရင် **More info → Run anyway** ([ဘာလို့လဲ?](docs/GUIDE.md#s3))
+2. **API key ထည့်** — Wizard က မြန်မာလို လမ်းပြပေးပါမယ်။ Google account နဲ့ အခမဲ့ ယူရပါတယ် ([အသေးစိတ်](docs/GUIDE.md#s4))
+3. **ပြော!** — စာရိုက်ချင်တဲ့နေရာ နှိပ် → **ညာဘက် `Ctrl`** ဖိထား → ပြော → လွှတ်
 
-| ဖိုင် | ဘယ်သူ့အတွက်လဲ |
+## ⌨️ သုံးနည်း အတိုချုပ်
+
+| လုပ်ချင်တာ | လုပ်ရမှာ |
 |---|---|
-| `MyanmarFlow-Setup.exe` | **အများစုအတွက် ဒါကိုယူပါ။** Install လုပ်ပြီး Start menu မှာ ပေါ်လာမယ် |
-| `MyanmarFlow.exe` | Install မလုပ်ချင်သူ — double-click နှိပ်ရုံပဲ |
+| 🇲🇲 မြန်မာလို ရိုက်မယ် | **ညာ `Ctrl`** ဖိ → ပြော → လွှတ် |
+| 🇬🇧 မြန်မာလိုပြော၊ English ထွက် | **ညာ `Alt`** ဖိ → ပြော → လွှတ် |
+| 🙌 စာရှည် လက်မလိုဘဲ | Key **၂ ချက်** ဆက်နှိပ် → ပြော → **၁ ချက်** နှိပ်ရင် ရပ် |
+| ⏸️ ခဏ ရပ်ထား | နာရီဘေးက icon ကို **တစ်ချက်နှိပ်** |
+| ⚙️ Settings / 🆘 အကူအညီ | နာရီဘေးက icon ကို **Right-click** |
 
-Windows 10 / 11 လိုပါတယ်။ Python စတာတွေ ထည့်စရာမလိုပါ။
+## ✨ Features
 
-## 🚀 စတင်အသုံးပြုနည်း (၃ မိနစ်)
+- 🎯 **AI စာပြင်** — အကြားမှားတဲ့ စာလုံး၊ စာလုံးပေါင်း၊ ပုဒ်ဖြတ် (၊ ။) တွေကို အလိုလို ပြင်ပေး
+- 🌐 **English ဘာသာပြန်** — မြန်မာလို ပြောပြီး English စာ ထွက်
+- 🇲🇲+🇬🇧 မြန်မာ-English **ရောပြော**လို့ရ
+- 🙌 **လက်မလို mode** — စာရှည်ရှည် ပြောလို့ရ (၅ မိနစ်အထိ)
+- 🇲🇲 Setup wizard၊ error message အားလုံး **မြန်မာလို**
+- 🔒 **Privacy** — ကိုယ်ပိုင် API key နဲ့ Google ဆီပဲ ပို့၊ ပြောတဲ့စာကို ဘယ်မှာမှ မသိမ်း
+- ⬆️ Version အသစ်ထွက်ရင် **အလိုလို အသိပေး**
 
-1. **`MyanmarFlow-Setup.exe` ကိုဖွင့်ပါ။**
-   အပြာရောင် **"Windows protected your PC"** box ပေါ်လာရင် → **More info** → **Run anyway** ကိုနှိပ်ပါ။
-   (App က အခမဲ့ open-source ဖြစ်လို့ Microsoft certificate မဝယ်ထားတာကြောင့်ပါ။ Code အားလုံးကို ဒီမှာ ကြည့်လို့ရပါတယ်။)
-2. **Setup wizard က မြန်မာလို လမ်းပြပေးပါမယ်:**
-   - "API key ယူရန်" ကိုနှိပ် → Google account နဲ့ဝင် → **Create API key** → Copy ကူး → Paste လုပ် → **စစ်ဆေးမယ်**
-   - Mic စမ်းကြည့်ပါ
-3. **ပြီးပါပြီ!** စာရိုက်ချင်တဲ့နေရာကို နှိပ်ပြီး **ညာဘက် `Ctrl`** ကို ဖိထားပြီး ပြောပါ။ လွှတ်လိုက်ရင် စာဝင်လာပါမယ်။
+## ⚠️ သိထားရန်
 
-> 💡 API key က အခမဲ့ free tier နဲ့ ရပါတယ်။ ကိုယ့် key ကို ဘယ်သူ့ကိုမှ မပေးပါနဲ့။ Key က သင့်ကွန်ပျူတာထဲမှာပဲ သိမ်းထားပြီး Google ကိုပဲ ပို့ပါတယ်။
+- **Internet** လိုပါတယ်။ Google Gemini ကို သုံးလို့ပါ။
+- Google က **မြန်မာနိုင်ငံထဲမှာ Gemini API ကို ခွင့်မပြုသေးပါ** ([စာရင်း](https://ai.google.dev/gemini-api/docs/available-regions))။ ပြည်ပမှာ နေသူတွေ ပြဿနာ မရှိပါ။
+- Free API key က **တစ်ရက် အကြိမ်ရေ limit** ရှိပါတယ် ([အသေးစိတ်](docs/GUIDE.md#s12))။
 
-## ⌨️ သုံးနည်းများ
+## 🆘 အကူအညီ
 
-| လုပ်ချင်တာ | နှိပ်ရမှာ |
-|---|---|
-| မြန်မာလို ရိုက်မယ် | **ညာဘက် `Ctrl`** ဖိထား → ပြော → လွှတ် |
-| မြန်မာလိုပြောပြီး **English** လို ရိုက်မယ် | **ညာဘက် `Alt`** ဖိထား → မြန်မာလို ပြော → လွှတ် |
-| စာရှည်ရှည် လက်မလိုဘဲ ပြောမယ် | Key ကို **၂ ချက်ဆက်နှိပ်** → ပြော → **တစ်ချက်နှိပ်** ပြီးရင် |
-
-- **AI စာပြင်:** ပြောပြီးတာကို AI က ထပ်စစ်ပြီး အကြားမှားတဲ့စာလုံး၊ စာလုံးပေါင်း၊ ပုဒ်ဖြတ်တွေ ပြင်ပေးပါတယ်။ ၁-၃ စက္ကန့် ပိုကြာပါတယ်။ Settings မှာ ပိတ်လို့ရပါတယ်။
-- တစ်ခါပြောရင် အများဆုံး ၅ မိနစ်ပါ။
-- Version အသစ်ထွက်ရင် notification နဲ့ အသိပေးပါမယ်။
-
-## 🟢 Tray icon
-
-နာရီဘေး (မမြင်ရရင် `^` ကိုနှိပ်) မှာ icon လေး ရှိပါတယ်:
-
-| အရောင် | အဓိပ္ပာယ် |
-|---|---|
-| 🟢 အစိမ်း | ဖွင့်ထားတယ် — သုံးလို့ရပြီ |
-| ⚪ မီးခိုး | ပိတ်ထားတယ် |
-| 🔴 အနီ | နားထောင်နေတယ် (screen အောက်က pill မှာ 🔴 = မြန်မာ၊ 🔵 EN = English၊ ■ = လက်မလို mode — တစ်ချက်နှိပ်ရင် ရပ်) |
-| 🟠 လိမ္မော် | စာပြောင်းနေတယ် |
-
-- **Icon ကို တစ်ချက်နှိပ်** → ဖွင့်/ပိတ်
-- **Right-click** → Settings (hotkey ပြောင်းရန်၊ model၊ စကားလုံးအထူးများ), Setup wizard, အကူအညီ, ပြဿနာတင်ပြရန်
-
-## 🛠️ ပြဿနာဖြေရှင်းနည်း
-
-Error တက်ရင် screen အောက်နားမှာ မြန်မာလို ပြပါတယ်:
-
-| ပြတဲ့စာ | ဘာလုပ်ရမလဲ |
-|---|---|
-| **အင်တာနက် ချိတ်မရပါ** | Internet ချိတ်ထားလား စစ်ပါ |
-| **ဒီနေရာကနေ Gemini သုံးခွင့်မရှိပါ** | Google က သင့်နိုင်ငံ/ဒေသမှာ Gemini API ကို ခွင့်မပြုသေးပါ ([စာရင်း](https://ai.google.dev/gemini-api/docs/available-regions))။ ⚠️ **မြန်မာနိုင်ငံ ဒီစာရင်းထဲ မပါသေးပါ** |
-| **API key မှားနေပါတယ်** | Right-click → Setup wizard နဲ့ key ပြန်ထည့်ပါ |
-| **သုံးနိုင်တဲ့ အကြိမ်ရေ ပြည့်သွားပြီ** | Google က သင့် API key အတွက် သတ်မှတ်ထားတဲ့ limit ပြည့်တာပါ (app က ကန့်သတ်ထားတာ မဟုတ်ပါ)။ ခဏစောင့်ပြီး ပြန်စမ်းပါ။ မကြာခဏဖြစ်ရင် Settings မှာ "AI နဲ့ စာပြင်ပေးမယ်" ကိုပိတ်ပါ (တစ်ခါပြောတိုင်း API ၂ ကြိမ်ကနေ ၁ ကြိမ် ဖြစ်သွားမယ်) ဒါမှမဟုတ် [AI Studio](https://aistudio.google.com) မှာ billing ဖွင့်ပါ |
-| **ဘာသာပြန်လို့မရလို့ မြန်မာလိုပဲ ထည့်ထားပါတယ်** | English ဘာသာပြန်တာ မအောင်မြင်လို့ မြန်မာလို ထည့်ပေးထားတာပါ။ ပြန်စမ်းပါ |
-| **Model နာမည် မှားနေပါတယ်** | Settings → Model ကို `gemini-3.5-transcribe` ပြန်ထားပါ |
-| ဘာမှ မဖြစ်ဘူး | Icon အစိမ်းရောင်လား စစ်ပါ။ Admin app တွေထဲမှာ မရရင် Myanmar Flow ကို "Run as administrator" နဲ့ဖွင့်ပါ |
-| Mic မရဘူး | Windows Settings → Privacy & security → Microphone → Desktop apps ကို ဖွင့်ပါ |
-
-**မရသေးရင်:** Right-click → **ပြဿနာတင်ပြရန်** နှိပ်ပြီး [Issue](https://github.com/ThecrashO/myanmar-flow/issues/new) ဖွင့်ပါ။ Right-click → **Log ဖိုင်ဖွင့်ရန်** ထဲက error စာကြောင်းကို ထည့်ပေးပါ (API key မပါအောင် သတိထားပါ)။
-
-## 🔒 Privacy
-
-- ပြောတဲ့အသံကို Hotkey ဖိထားချိန်မှာပဲ ဖမ်းပြီး **သင့်ကိုယ်ပိုင် API key နဲ့ Google Gemini ဆီကိုပဲ** ပို့ပါတယ်။ တခြား server မရှိပါ။
-- Settings နဲ့ key ကို `%APPDATA%\MyanmarFlow\config.json` မှာ သိမ်းပါတယ်။ Uninstall လုပ်ရင် ဖျက်ပေးပါတယ်။
+- 📘 [လမ်းညွှန် — ပြဿနာဖြေရှင်းနည်း](docs/GUIDE.md#s14) · [FAQ](docs/GUIDE.md#s15)
+- 🐞 [ပြဿနာ တင်ပြရန်](https://github.com/ThecrashO/myanmar-flow/issues/new/choose) (မြန်မာလို ရေးလို့ရ)
+- 💡 [အကြံဉာဏ် ပေးရန်](https://github.com/ThecrashO/myanmar-flow/issues/new/choose)
 
 ---
+
+<a name="english"></a>
 
 ## English
 
@@ -88,11 +71,12 @@ Error တက်ရင် screen အောက်နားမှာ မြန်�
 
 - Hold **Right Ctrl**, speak, release — the transcript is pasted into the focused app.
 - Hold **Right Alt** to speak Burmese and get English text. Double-tap either key for hands-free dictation (tap again to stop, 5-minute cap).
-- Optional AI polish pass (`gemini-3.6-flash`) fixes misheard words, spelling and punctuation; falls back to the raw transcript if it fails.
-- Transcripts are never written to the log. Checks GitHub for new releases once a day (can be turned off).
-- Uses Google's [`gemini-3.5-transcribe`](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-transcribe) speech-to-text model with the `my-MM` language hint and "smart" formatting. General Gemini models (e.g. `gemini-3.6-flash`) also work via a prompt.
+- Uses Google's [`gemini-3.5-transcribe`](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-transcribe) speech-to-text model with the `my-MM` language hint, plus an optional polish pass (`gemini-3.6-flash`) that fixes misheard words, spelling and punctuation, falling back to the raw transcript if it fails.
 - Bring your own free [Gemini API key](https://aistudio.google.com/apikey); a Burmese setup wizard walks you through it.
+- Transcripts are never written to the log. Checks GitHub for new releases once a day (can be turned off).
 - ⚠️ The Gemini API is only available in [these regions](https://ai.google.dev/gemini-api/docs/available-regions) — Myanmar is currently not one of them.
+
+Full user guide (Burmese): [docs/GUIDE.md](docs/GUIDE.md)
 
 ### Build from source
 

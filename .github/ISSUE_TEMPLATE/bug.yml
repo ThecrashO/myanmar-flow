@@ -1,0 +1,69 @@
+name: "🐞 ပြဿနာ တင်ပြရန် (Report a problem)"
+description: Myanmar Flow အလုပ်မလုပ်ရင် ဒီမှာ ပြောပြပါ — မြန်မာလို ရေးလို့ရပါတယ်
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        အကူအညီ တောင်းတဲ့အတွက် ကျေးဇူးပါ 🙏
+        မတင်ခင် [ပြဿနာဖြေရှင်းနည်း](https://github.com/ThecrashO/myanmar-flow/blob/main/docs/GUIDE.md#s14) နဲ့ [FAQ](https://github.com/ThecrashO/myanmar-flow/blob/main/docs/GUIDE.md#s15) ကို အရင်ကြည့်ပေးပါ — အဖြေ ရှိပြီးသား ဖြစ်နိုင်ပါတယ်။
+
+        > 🔒 **API key ကို ဒီမှာ လုံးဝ မထည့်ပါနဲ့။** Screenshot နဲ့ log မှာ key ပါမပါ အရင်စစ်ပါ။
+  - type: textarea
+    id: what
+    attributes:
+      label: ဘာဖြစ်တာလဲ?
+      description: ဘာလုပ်နေတုန်း ဘာဖြစ်သွားလဲ ရေးပါ
+      placeholder: "ဥပမာ - Messenger မှာ ညာဘက် Ctrl ဖိပြီး ပြောတယ်၊ pill မှာ 'API key မှားနေပါတယ်' ပေါ်တယ်"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: ဘာဖြစ်စေချင်တာလဲ?
+      placeholder: "ဥပမာ - ပြောတဲ့စာ ဝင်လာစေချင်တယ်"
+  - type: dropdown
+    id: when
+    attributes:
+      label: ဘယ်အဆင့်မှာ ဖြစ်တာလဲ?
+      options:
+        - Download / Install လုပ်တုန်း
+        - Setup wizard (API key ထည့်တုန်း)
+        - ပြောပြီး စာရိုက်တုန်း
+        - English ဘာသာပြန်တုန်း
+        - Settings ပြောင်းတုန်း
+        - တခြား
+    validations:
+      required: true
+  - type: input
+    id: pill
+    attributes:
+      label: Screen အောက်က pill မှာ ဘာပြလဲ?
+      placeholder: "ဥပမာ - အင်တာနက် ချိတ်မရပါ"
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: နာရီဘေးက icon ကို Right-click → menu ထဲမှာ "Version 1.x.x" ပါပါတယ်
+      placeholder: "1.1.0"
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows
+      options:
+        - Windows 11
+        - Windows 10
+        - မသိဘူး
+  - type: textarea
+    id: log
+    attributes:
+      label: Log (ရှိရင်)
+      description: Icon → Right-click → "Log ဖိုင်ဖွင့်ရန်" → `ERROR` ပါတဲ့ စာကြောင်းတွေကို copy ကူးထည့်ပါ
+      render: text
+  - type: markdown
+    attributes:
+      value: Screenshot ရှိရင် အောက်က အကွက်ထဲ ဆွဲထည့်လို့ရပါတယ် (API key မပါအောင် သတိထားပါ)။
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshot

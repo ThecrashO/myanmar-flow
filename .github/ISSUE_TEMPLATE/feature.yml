@@ -1,0 +1,15 @@
+name: "💡 အကြံဉာဏ် ပေးရန် (Suggest a feature)"
+description: Myanmar Flow ကို ပိုကောင်းအောင် အကြံပေးပါ — မြန်မာလို ရေးလို့ရပါတယ်
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: ဘာထပ်ထည့်စေချင်လဲ?
+      placeholder: "ဥပမာ - ပြောခဲ့တဲ့စာတွေကို history အနေနဲ့ ပြန်ကြည့်ချင်တယ်"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: ဘာကြောင့်လဲ? ဘယ်လိုအခါမျိုးမှာ သုံးမှာလဲ?
