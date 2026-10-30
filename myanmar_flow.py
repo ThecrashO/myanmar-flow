@@ -34,7 +34,7 @@ import sounddevice as sd
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, features
 
 APP_NAME = "Myanmar Flow"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 REPO_URL = "https://github.com/ThecrashO/myanmar-flow"
 DATA_DIR = Path(os.environ.get("APPDATA", Path.home())) / "MyanmarFlow"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -78,6 +78,9 @@ DEFAULT_CONFIG = {
     "polish": True,
     "text_model": "gemini-3.6-flash",
     "check_updates": True,
+    # Leave the text on the clipboard after pasting, so Ctrl+V still works if the
+    # cursor wasn't in a text box.
+    "keep_in_clipboard": True,
     # Used only by general models (generateContent), e.g. gemini-3.6-flash.
     "prompt": (
         "Transcribe this audio. The speaker mainly speaks Burmese (Myanmar), "
@@ -261,17 +264,20 @@ def check_api_key(api_key):
     return friendly_error(RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}"))
 
 
-def paste_text(text):
-    """Paste via the clipboard (reliable for Myanmar script), then restore the old clipboard."""
-    try:
-        previous = pyperclip.paste()
-    except Exception:
-        previous = None
+def paste_text(text, keep=True):
+    """Paste via the clipboard (reliable for Myanmar script). With keep=False the old
+    clipboard is restored afterwards; otherwise the text stays there for Ctrl+V."""
+    previous = None
+    if not keep:
+        try:
+            previous = pyperclip.paste()
+        except Exception:
+            pass
     pyperclip.copy(text)
     time.sleep(0.05)
     keyboard.send("ctrl+v")
-    time.sleep(0.3)
     if previous is not None:
+        time.sleep(0.3)
         pyperclip.copy(previous)
 
 
@@ -474,7 +480,8 @@ class Indicator:
         elif state == "transcribing":
             self.mode, self.started = "transcribing", now
         elif state == "done":
-            self.mode, self.started, self.hide_at = "done", now, now + 0.7
+            self.mode, self.started, self.text = "done", now, text or ""
+            self.hide_at = now + (2.2 if text else 0.7)
         elif text:
             self.mode, self.text, self.hide_at = "error", text, now + 3.5
         else:
@@ -533,7 +540,7 @@ class Indicator:
         return self.fonts[key]
 
     def width(self, k):
-        if self.mode == "error":
+        if self.mode == "error" or (self.mode == "done" and self.text):
             text_w = self.font("mmrtext.ttf", 13, k).getlength(self.text) / k if HAS_RAQM else 0
             return int(52 + text_w + 18)
         return 204
@@ -595,8 +602,12 @@ class Indicator:
             d.ellipse((at(20 - 8), cy - 8 * k, at(20 + 8), cy + 8 * k), fill=GREEN + (255,))
             d.line([(at(16), cy), (at(19), cy + 3 * k), (at(24.5), cy - 3.5 * k)],
                    fill=WHITE + (255,), width=max(1, int(2.2 * k)), joint="curve")
-            fade = max(0.0, 1 - t / 0.3)
-            bars([3 + 4 * fade] * BARS, mix(DIM, PILL_BG, 0.7))
+            if self.text:
+                if HAS_RAQM:
+                    d.text((at(38), cy), self.text, font=self.font("mmrtext.ttf", 13, k), fill=WHITE + (255,), anchor="lm")
+            else:
+                fade = max(0.0, 1 - t / 0.3)
+                bars([3 + 4 * fade] * BARS, mix(DIM, PILL_BG, 0.7))
         elif self.mode == "error":
             d.ellipse((at(20 - 8), cy - 8 * k, at(20 + 8), cy + 8 * k), fill=RED + (255,))
             d.text((at(20), cy), "!", font=self.font("segoeuib.ttf", 12, k), fill=WHITE + (255,), anchor="mm")
@@ -666,6 +677,7 @@ class SettingsWindow:
         self.sounds = tk.BooleanVar(value=cfg["sounds"])
         self.polish = tk.BooleanVar(value=cfg["polish"])
         self.check_updates = tk.BooleanVar(value=cfg["check_updates"])
+        self.keep_clip = tk.BooleanVar(value=cfg["keep_in_clipboard"])
         self.autostart = tk.BooleanVar(value=autostart_enabled())
 
         rows = [
@@ -690,6 +702,7 @@ class SettingsWindow:
         link.bind("<Button-1>", lambda e: webbrowser.open("https://aistudio.google.com/apikey"))
         checks = [
             ("AI နဲ့ စာပြင်ပေးမယ် (ပိုတိကျ၊ ၁-၃ စက္ကန့် ပိုကြာ)", self.polish),
+            ("စာကို Copy ကူးထားမယ် (cursor မချမိရင် Ctrl+V နဲ့ ထည့်လို့ရ)", self.keep_clip),
             ("Beep sounds", self.sounds),
             ("Windows စဖွင့်ရင် အလိုလိုဖွင့်မယ်", self.autostart),
             ("Version အသစ်ထွက်ရင် အသိပေးမယ်", self.check_updates),
@@ -720,6 +733,7 @@ class SettingsWindow:
         cfg["sounds"] = self.sounds.get()
         cfg["polish"] = self.polish.get()
         cfg["check_updates"] = self.check_updates.get()
+        cfg["keep_in_clipboard"] = self.keep_clip.get()
         for key in filter(None, (cfg["hotkey"], cfg["translate_hotkey"])):
             try:
                 keyboard.key_to_scan_codes(key)
@@ -1123,11 +1137,13 @@ class App:
         if text:
             # Never log the text itself: it can be private.
             log.info("Typed %d characters (%s)", len(text), mode)
-            paste_text(text)
+            paste_text(text, keep=self.cfg["keep_in_clipboard"])
         if not self.enabled:
             self.set_state("off")
         elif note:
             self.set_state("idle", note)
+        elif text and self.cfg["keep_in_clipboard"]:
+            self.set_state("done", "Copy ကူးထားပြီး — Ctrl+V နဲ့လည်း ထည့်လို့ရ")
         else:
             self.set_state("done" if text else "idle")
 
