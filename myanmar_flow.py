@@ -16,12 +16,14 @@ import sys
 import threading
 import time
 import tkinter as tk
+import unicodedata
 import wave
 import webbrowser
 import winreg
 import winsound
 from collections import deque
 from ctypes import wintypes
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from tkinter import ttk
 
@@ -31,15 +33,19 @@ import pyperclip
 import pystray
 import requests
 import sounddevice as sd
+import websocket
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, features
 
 APP_NAME = "Myanmar Flow"
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 REPO_URL = "https://github.com/ThecrashO/myanmar-flow"
 DATA_DIR = Path(os.environ.get("APPDATA", Path.home())) / "MyanmarFlow"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CONFIG_PATH = DATA_DIR / "config.json"
+STATS_PATH = DATA_DIR / "stats.json"
 LOG_PATH = DATA_DIR / "myanmar_flow.log"
+LIVE_URL = ("wss://generativelanguage.googleapis.com/ws/"
+            "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent")
 SAMPLE_RATE = 16000
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 UPDATE_API = "https://api.github.com/repos/ThecrashO/myanmar-flow/releases/latest"
@@ -69,6 +75,15 @@ DEFAULT_CONFIG = {
     "language_codes": ["my-MM"],
     "transcribe_mode": "smart",
     "custom_vocabulary": [],
+    # Stream audio while speaking and show the words as they are recognised.
+    "live": True,
+    "live_model": "gemini-3.5-transcribe-live",
+    # Say the key, get the value ("ငါ့လိပ်စာ" -> full address).
+    "snippets": {},
+    # Words the recogniser keeps getting wrong: wrong -> right.
+    "replacements": {},
+    # For the "time saved" estimate.
+    "typing_chars_per_minute": 90,
     "hotkey": "right ctrl",
     # Speak Burmese, get English text.
     "translate_hotkey": "right alt",
@@ -116,16 +131,20 @@ class Recorder:
         self.stream = None
         self.lock = threading.Lock()
         self.level = 0.0  # 0..1 loudness of the latest chunk, for the waveform
+        self.listener = None  # gets each chunk as raw PCM bytes (live streaming)
 
-    def start(self):
+    def start(self, listener=None):
         with self.lock:
             self.frames = []
             self.level = 0.0
+            self.listener = listener
             self.stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16", callback=self._callback)
             self.stream.start()
 
     def _callback(self, indata, frames, time_info, status):
         self.frames.append(indata.copy())
+        if self.listener:
+            self.listener(indata.tobytes())
         rms = float(np.sqrt(np.mean(indata.astype(np.float32) ** 2))) / 32768
         self.level = min(1.0, max(0.0, (20 * math.log10(rms + 1e-6) + 52) / 40))
 
@@ -136,6 +155,7 @@ class Recorder:
             self.stream.stop()
             self.stream.close()
             self.stream = None
+            self.listener = None
             if not self.frames:
                 return None
             return np.concatenate(self.frames)
@@ -162,8 +182,8 @@ def transcribe_interactions(cfg, wav_bytes):
     transcription_config = {"mode": cfg["transcribe_mode"]}
     if cfg["language_codes"]:
         transcription_config["language_codes"] = cfg["language_codes"]
-    if cfg["custom_vocabulary"]:
-        transcription_config["custom_vocabulary"] = cfg["custom_vocabulary"]
+    if vocabulary(cfg):
+        transcription_config["custom_vocabulary"] = vocabulary(cfg)
     body = {
         "model": cfg["model"],
         "input": [{"type": "audio", "data": base64.b64encode(wav_bytes).decode(), "mime_type": "audio/wav"}],
@@ -183,6 +203,120 @@ def transcribe_interactions(cfg, wav_bytes):
         items = step.get("content", [step])
         texts += [c.get("text", "") for c in items if c.get("type") == "text"]
     return "".join(texts).strip()
+
+
+class LiveTranscriber:
+    """Streams the microphone to a Gemini Live transcription model while the user
+    speaks. on_text gets the growing transcript; finish() returns the final one.
+
+    Audio that arrives before the socket is ready waits in a queue, so nothing is
+    lost while connecting. Any failure is kept and re-raised by finish(), and the
+    caller then transcribes the recorded audio the normal way."""
+
+    def __init__(self, cfg, on_text):
+        self.cfg = cfg
+        self.on_text = on_text
+        self.chunks = queue.Queue()
+        self.finals = []
+        self.interim = ""
+        self.error = None
+        self.ws = None
+        self.cancelled = False
+        self.done = threading.Event()
+        threading.Thread(target=self.run, daemon=True).start()
+
+    def feed(self, pcm):
+        self.chunks.put(pcm)
+
+    def text(self):
+        return " ".join(self.finals + [self.interim]).strip()
+
+    def run(self):
+        transcription = {"languageCodes": self.cfg["language_codes"], "mode": self.cfg["transcribe_mode"].upper()}
+        if vocabulary(self.cfg):
+            transcription["customVocabulary"] = vocabulary(self.cfg)
+        setup = {"setup": {
+            "model": f"models/{self.cfg['live_model']}",
+            "generationConfig": {"responseModalities": ["TEXT"]},
+            "realtimeInputConfig": {"automaticActivityDetection": {"disabled": True}},  # push-to-talk
+            "inputAudioTranscription": transcription,
+        }}
+        try:
+            self.ws = websocket.create_connection(LIVE_URL, timeout=10,
+                                                  header=[f"x-goog-api-key: {self.cfg['api_key']}"])
+            self.ws.send(json.dumps(setup))
+            reply = self.ws.recv()
+            if "setupComplete" not in str(reply):
+                raise RuntimeError(f"Live setup failed (model {self.cfg['live_model']}): {reply!r:.300}")
+            self.ws.settimeout(None)
+            if self.cancelled:
+                return self.close()
+            threading.Thread(target=self.read, daemon=True).start()
+            self.send({"activityStart": {}})
+            ending = False
+            while not ending:
+                parts = [self.chunks.get()]
+                while True:  # send whatever piled up as one message
+                    try:
+                        parts.append(self.chunks.get_nowait())
+                    except queue.Empty:
+                        break
+                ending = None in parts
+                pcm = b"".join(p for p in parts if p)
+                if pcm:
+                    self.send({"audio": {"data": base64.b64encode(pcm).decode(), "mimeType": f"audio/pcm;rate={SAMPLE_RATE}"}})
+            self.send({"activityEnd": {}})
+        except Exception as e:
+            if not self.cancelled:
+                self.error = e
+            self.done.set()
+
+    def send(self, realtime_input):
+        self.ws.send(json.dumps({"realtimeInput": realtime_input}))
+
+    def read(self):
+        try:
+            while not self.done.is_set():
+                raw = self.ws.recv()
+                if not raw:
+                    raise RuntimeError("Live connection closed")
+                msg = json.loads(raw)
+                content = msg.get("serverContent", {})
+                if "interimInputTranscription" in content:  # cumulative guess for the current segment
+                    self.interim = content["interimInputTranscription"].get("text", "")
+                    self.on_text(self.text())
+                if "inputTranscription" in content:
+                    self.finals.append(content["inputTranscription"].get("text", "").strip())
+                    self.interim = ""
+                    self.on_text(self.text())
+                if msg.get("voiceActivity", {}).get("type") == "ACTIVITY_END":
+                    self.done.set()
+        except Exception as e:
+            if not self.done.is_set() and not self.cancelled:
+                self.error = e
+            self.done.set()
+
+    def finish(self, timeout=8):
+        """Stop streaming and wait for the final transcript."""
+        self.chunks.put(None)
+        finished = self.done.wait(timeout)
+        self.close()
+        if self.error:
+            raise self.error
+        if not finished:
+            raise RuntimeError("Live transcription timed out")
+        return " ".join(f for f in self.finals if f)
+
+    def cancel(self):
+        self.cancelled = True
+        self.chunks.put(None)
+        self.done.set()
+        self.close()
+
+    def close(self):
+        with contextlib.suppress(Exception):
+            if self.ws:
+                self.ws.close()
 
 
 def generate(cfg, model, parts, system=None, generation_config=None, timeout=60):
@@ -227,10 +361,129 @@ TRANSLATE_PROMPT = (
 
 def rewrite(cfg, text, translate=False):
     """Polish (or translate) a raw transcript with a fast text model."""
-    out = generate(cfg, cfg["text_model"], [{"text": f"<transcript>\n{text}\n</transcript>"}],
-                   system=TRANSLATE_PROMPT if translate else POLISH_PROMPT,
+    system = TRANSLATE_PROMPT if translate else POLISH_PROMPT
+    if vocabulary(cfg) and not translate:
+        system += " These words and names may appear; spell them exactly like this: " + ", ".join(vocabulary(cfg))
+    out = generate(cfg, cfg["text_model"], [{"text": f"<transcript>\n{text}\n</transcript>"}], system=system,
                    generation_config={"thinkingConfig": {"thinkingLevel": "low"}}, timeout=12)
     return out or text
+
+
+# ---------------------------------------------------------------- personal words and shortcuts
+
+def vocabulary(cfg):
+    """Words the recogniser should expect: custom words, shortcut phrases and the
+    corrected spellings from word fixes."""
+    words = list(cfg["custom_vocabulary"]) + list(cfg["snippets"]) + list(cfg["replacements"].values())
+    return list(dict.fromkeys(w.strip() for w in words if w.strip() and len(w) <= 60))[:100]
+
+
+def squash(text):
+    """Text with spaces and punctuation removed, for loose comparison."""
+    return re.sub(r"[\s၊။,.!?;:'\"()-]+", "", text).lower()
+
+
+def loose_pattern(phrase):
+    """Regex for phrase that tolerates extra or missing spaces between letters."""
+    return r"\s*".join(re.escape(c) for c in phrase if not c.isspace())
+
+
+def find_snippet(cfg, text):
+    """The shortcut's text if the whole utterance is a shortcut phrase."""
+    key = squash(text)
+    for say, value in cfg["snippets"].items():
+        if key and squash(say) == key:
+            return value
+    return None
+
+
+# Thai letters the recogniser sometimes emits inside Burmese words (ရာသီဥตุ).
+THAI_LOOKALIKES = str.maketrans({"ต": "တ", "ุ": "ု", "ู": "ူ", "ิ": "ိ", "ี": "ီ"})
+
+
+def fix_words(cfg, text):
+    """Apply the user's word fixes, and expand shortcut phrases said inside a sentence."""
+    text = text.translate(THAI_LOOKALIKES)
+    for table in (cfg["replacements"], cfg["snippets"]):
+        for wrong, right in table.items():
+            if loose_pattern(wrong):
+                text = re.sub(loose_pattern(wrong), lambda _: right, text, flags=re.IGNORECASE)
+    return text
+
+
+def parse_pairs(text):
+    """'say => value' lines (\\n in a value means a new line); # starts a comment."""
+    pairs = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        for sep in ("=>", "→"):
+            if sep in line:
+                key, value = (s.strip() for s in line.split(sep, 1))
+                if key and value:
+                    pairs[key] = value.replace("\\n", "\n")
+                break
+    return pairs
+
+
+def format_pairs(pairs):
+    return "\n".join(k + " => " + v.replace("\n", "\\n") for k, v in pairs.items())
+
+
+# ---------------------------------------------------------------- usage stats
+
+class Stats:
+    """Per-day counts (characters, dictations, seconds spoken) in stats.json, for
+    the dashboard. Never stores the text itself."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        try:
+            self.days = json.loads(STATS_PATH.read_text(encoding="utf-8")).get("days", {})
+        except (OSError, ValueError):
+            self.days = {}
+
+    def add(self, chars, seconds):
+        with self.lock:
+            day = self.days.setdefault(date.today().isoformat(), {"chars": 0, "count": 0, "seconds": 0.0})
+            day["chars"] += chars
+            day["count"] += 1
+            day["seconds"] = round(day["seconds"] + seconds, 1)
+            try:
+                STATS_PATH.write_text(json.dumps({"days": self.days}, indent=1), encoding="utf-8")
+            except OSError as e:
+                log.warning("stats: %s", e)
+
+    def total(self, since=None):
+        out = {"chars": 0, "count": 0, "seconds": 0.0}
+        with self.lock:
+            for day, v in self.days.items():
+                if since is None or day >= since.isoformat():
+                    for k in out:
+                        out[k] += v.get(k, 0)
+        return out
+
+    def streak(self):
+        """Days in a row (ending today or yesterday) with at least one dictation."""
+        day, n = date.today(), 0
+        if day.isoformat() not in self.days:
+            day -= timedelta(days=1)
+        while day.isoformat() in self.days:
+            n, day = n + 1, day - timedelta(days=1)
+        return n
+
+
+def minutes_saved(totals, chars_per_minute):
+    """Typing time the text would have taken, minus the time spent speaking it."""
+    return max(0.0, totals["chars"] / max(1, chars_per_minute) - totals["seconds"] / 60)
+
+
+MM_DIGITS = str.maketrans("0123456789", "၀၁၂၃၄၅၆၇၈၉")
+
+
+def mm_number(n):
+    return f"{n:,}".translate(MM_DIGITS)
 
 
 def friendly_error(err):
@@ -457,6 +710,8 @@ class Indicator:
         self.anchor = (0, 0, 1.0)  # centre x, bottom y (physical px), scale
         self.bases = {}
         self.fonts = {}
+        self.live_text = ""
+        self.bubble_cache = (None, None)
         with dpi_aware():
             self.hwnd = user32.CreateWindowExW(
                 WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST,
@@ -475,17 +730,21 @@ class Indicator:
             self.hide_at = None
         if state == "recording":
             if self.mode != "recording" or not locked:  # going hands-free keeps the timer running
-                self.mode, self.started = "recording", now
+                self.mode, self.started, self.live_text = "recording", now, ""
                 self.levels.extend([0.0] * BARS)
         elif state == "transcribing":
             self.mode, self.started = "transcribing", now
         elif state == "done":
-            self.mode, self.started, self.text = "done", now, text or ""
+            self.mode, self.started, self.text, self.live_text = "done", now, text or "", ""
             self.hide_at = now + (2.2 if text else 0.7)
         elif text:
-            self.mode, self.text, self.hide_at = "error", text, now + 3.5
+            self.mode, self.text, self.hide_at, self.live_text = "error", text, now + 3.5, ""
         else:
-            self.target = 0.0
+            self.target, self.live_text = 0.0, ""
+
+    def set_live(self, text):
+        if self.mode in ("recording", "transcribing"):
+            self.live_text = text
 
     def locate(self):
         """Bottom centre of the work area of the monitor the user is typing on."""
@@ -614,8 +873,47 @@ class Indicator:
             if HAS_RAQM:
                 d.text((at(38), cy), self.text, font=self.font("mmrtext.ttf", 13, k), fill=WHITE + (255,), anchor="lm")
 
+        if self.live_text and HAS_RAQM and self.mode in ("recording", "transcribing"):
+            img = self.with_bubble(img, k)
         final = (round(img.width / SUPERSAMPLE), round(img.height / SUPERSAMPLE))
         return img.resize(final, Image.LANCZOS)
+
+    BUBBLE_H = 36
+    BUBBLE_MAX_W = 560
+
+    def bubble(self, k):
+        """The live transcript in a dark bubble: the newest words that fit on one line."""
+        if self.bubble_cache[0] == (self.live_text, k):
+            return self.bubble_cache[1]
+        font = self.font("mmrtext.ttf", 14, k)
+        limit = (self.BUBBLE_MAX_W - 36) * k
+        text, words = self.live_text, self.live_text.split()
+        while len(words) > 1 and font.getlength(text) > limit:
+            words = words[1:]
+            text = "… " + " ".join(words)
+        while font.getlength(text) > limit and len(text) > 3:  # one very long word
+            text = text[2:]
+            while text and unicodedata.category(text[0]) in ("Mn", "Mc"):  # don't start mid-syllable
+                text = text[1:]
+            text = "…" + text
+        w, h = font.getlength(text) / k + 36, self.BUBBLE_H
+        img = Image.new("RGBA", (int((w + 4) * k), int((h + 6) * k)), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle((2 * k, 4 * k, (w + 2) * k, (h + 4) * k), radius=12 * k, fill=(0, 0, 0, 70))
+        d.rounded_rectangle((2 * k, 2 * k, (w + 2) * k, (h + 2) * k), radius=12 * k, fill=PILL_BORDER + (255,))
+        d.rounded_rectangle((3 * k, 3 * k, (w + 1) * k, (h + 1) * k), radius=11 * k, fill=(30, 30, 34, 255))
+        d.text((20 * k, (2 + h / 2) * k), text, font=font, fill=WHITE + (255,), anchor="lm")
+        self.bubble_cache = ((self.live_text, k), img)
+        return img
+
+    def with_bubble(self, pill, k):
+        bubble = self.bubble(k)
+        gap = int(8 * k)
+        canvas = Image.new("RGBA", (max(pill.width, bubble.width + int(2 * self.MARGIN * k)),
+                                    pill.height + bubble.height + gap), (0, 0, 0, 0))
+        canvas.alpha_composite(pill, ((canvas.width - pill.width) // 2, canvas.height - pill.height))
+        canvas.alpha_composite(bubble, ((canvas.width - bubble.width) // 2, int(self.MARGIN * k)))
+        return canvas
 
     def present(self, img):
         """Push a premultiplied BGRA bitmap to the layered window (UpdateLayeredWindow)."""
@@ -678,6 +976,7 @@ class SettingsWindow:
         self.polish = tk.BooleanVar(value=cfg["polish"])
         self.check_updates = tk.BooleanVar(value=cfg["check_updates"])
         self.keep_clip = tk.BooleanVar(value=cfg["keep_in_clipboard"])
+        self.live = tk.BooleanVar(value=cfg["live"])
         self.autostart = tk.BooleanVar(value=autostart_enabled())
 
         rows = [
@@ -701,6 +1000,7 @@ class SettingsWindow:
         link.grid(row=n, column=1, sticky="w")
         link.bind("<Button-1>", lambda e: webbrowser.open("https://aistudio.google.com/apikey"))
         checks = [
+            ("⚡ ပြောနေတုန်း စာကို တန်းပြမယ် (Live — စောင့်ချိန် နည်း)", self.live),
             ("AI နဲ့ စာပြင်ပေးမယ် (ပိုတိကျ၊ ၁-၃ စက္ကန့် ပိုကြာ)", self.polish),
             ("စာကို Copy ကူးထားမယ် (cursor မချမိရင် Ctrl+V နဲ့ ထည့်လို့ရ)", self.keep_clip),
             ("Beep sounds", self.sounds),
@@ -734,6 +1034,7 @@ class SettingsWindow:
         cfg["polish"] = self.polish.get()
         cfg["check_updates"] = self.check_updates.get()
         cfg["keep_in_clipboard"] = self.keep_clip.get()
+        cfg["live"] = self.live.get()
         for key in filter(None, (cfg["hotkey"], cfg["translate_hotkey"])):
             try:
                 keyboard.key_to_scan_codes(key)
@@ -750,6 +1051,154 @@ class SettingsWindow:
         save_config(cfg)
         self.app.apply_config(cfg)
         self.win.destroy()
+
+
+# ---------------------------------------------------------------- words & shortcuts window
+
+SNIPPET_EXAMPLE = ("# ဥပမာ (ရှေ့က # ကိုဖျက်ရင် သုံးလို့ရပြီ)\n"
+                   "# ငါ့လိပ်စာ => အမှတ် ၁၂၊ ဗိုလ်ချုပ်လမ်း၊ ရန်ကုန်\n"
+                   "# ငါ့ဖုန်း => 09 123 456 789\n"
+                   "# ဘဏ်အကောင့် => KBZ 1234 5678 9012\\nAung Aung\n")
+FIX_EXAMPLE = ("# ဥပမာ - AI က အမြဲ မှားရေးတဲ့ စာလုံး => မှန်တဲ့ စာလုံး\n"
+               "# မြန်မာဖလိုး => Myanmar Flow\n")
+
+
+class WordsWindow:
+    """Edit voice shortcuts and word fixes, one 'say => text' per line."""
+
+    def __init__(self, app):
+        self.app = app
+        cfg = app.cfg
+        self.win = tk.Toplevel(app.root)
+        self.win.title(f"{APP_NAME} - စကားလုံးနဲ့ Shortcut")
+        self.win.attributes("-topmost", True)
+        frm = ttk.Frame(self.win, padding=16)
+        frm.pack(fill="both", expand=True)
+
+        def section(title, hint, content):
+            ttk.Label(frm, text=title, font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=(6, 0))
+            ttk.Label(frm, text=hint, foreground="#6b7280", wraplength=560, justify="left").pack(anchor="w", pady=(0, 4))
+            box = tk.Text(frm, width=70, height=7, wrap="none", font=("Segoe UI", 11), undo=True)
+            box.insert("1.0", content)
+            box.pack(fill="both", expand=True)
+            return box
+
+        self.snippets = section(
+            "🗣  Shortcut",
+            "ဘယ်ဘက်က စကားကို ပြောလိုက်ရင် ညာဘက်က စာကို ထည့်ပေးမယ်။ တစ်ကြောင်းကို တစ်ခု။ "
+            "စာကြောင်းအသစ် လိုရင် \\n လို့ ရေးပါ။",
+            format_pairs(cfg["snippets"]) or SNIPPET_EXAMPLE)
+        self.fixes = section(
+            "✏️  စာလုံးပြင်",
+            "အမြဲ မှားထွက်တဲ့ စာလုံးကို ဘယ်ဘက်မှာ၊ မှန်တဲ့ စာလုံးကို ညာဘက်မှာ ရေးပါ။ "
+            "ဒီစာလုံးတွေကို AI ကိုလည်း ကြိုပြောထားလို့ ပိုမှန်လာပါမယ်။",
+            format_pairs(cfg["replacements"]) or FIX_EXAMPLE)
+        btns = ttk.Frame(frm)
+        btns.pack(fill="x", pady=(12, 0))
+        ttk.Button(btns, text="Cancel", command=self.win.destroy).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Save", command=self.save).pack(side="right")
+        self.win.update_idletasks()
+        sw, sh = self.win.winfo_screenwidth(), self.win.winfo_screenheight()
+        self.win.geometry(f"+{(sw - self.win.winfo_width()) // 2}+{(sh - self.win.winfo_height()) // 4}")
+        self.win.focus_force()
+
+    def save(self):
+        cfg = dict(self.app.cfg)
+        cfg["snippets"] = parse_pairs(self.snippets.get("1.0", "end"))
+        cfg["replacements"] = parse_pairs(self.fixes.get("1.0", "end"))
+        save_config(cfg)
+        self.app.apply_config(cfg)
+        self.win.destroy()
+
+
+# ---------------------------------------------------------------- dashboard
+
+class DashboardWindow:
+    """Time saved, usage counts and the last few dictations (kept in memory only)."""
+
+    BG, CARD, INK, SUB = "#f6f7f9", "#ffffff", "#111827", "#6b7280"
+
+    def __init__(self, app):
+        self.app = app
+        self.win = tk.Toplevel(app.root)
+        self.win.title(f"{APP_NAME} - Dashboard")
+        self.win.configure(bg=self.BG)
+        self.win.attributes("-topmost", True)
+        self.body = tk.Frame(self.win, bg=self.BG, padx=20, pady=18)
+        self.body.pack(fill="both", expand=True)
+        self.render()
+        self.win.update_idletasks()
+        sw, sh = self.win.winfo_screenwidth(), self.win.winfo_screenheight()
+        self.win.geometry(f"+{(sw - self.win.winfo_width()) // 2}+{(sh - self.win.winfo_height()) // 4}")
+        self.win.focus_force()
+
+    def label(self, parent, text, size=11, bold=False, color=None, **kw):
+        return tk.Label(parent, text=text, bg=parent["bg"], fg=color or self.INK,
+                        font=("Segoe UI", size, "bold" if bold else "normal"), **kw)
+
+    def render(self):
+        for child in self.body.winfo_children():
+            child.destroy()
+        stats, cpm = self.app.stats, self.app.cfg["typing_chars_per_minute"]
+        today = date.today()
+        periods = [("ဒီနေ့", stats.total(today)),
+                   ("ဒီအပတ် (၇ ရက်)", stats.total(today - timedelta(days=6))),
+                   ("စုစုပေါင်း", stats.total())]
+        week = minutes_saved(periods[1][1], cpm)
+        self.label(self.body, "⏱  ဒီအပတ် " + mm_number(round(week)) + " မိနစ် သက်သာခဲ့တယ်",
+                   size=17, bold=True).pack(anchor="w")
+        streak = stats.streak()
+        sub = f"🔥 {mm_number(streak)} ရက် ဆက်တိုက် သုံးနေတယ်" if streak > 1 else "စာရိုက်မယ့်အစား ပြောလိုက်ရင် ဒီမှာ စုမှတ်ပေးမယ်"
+        self.label(self.body, sub, color=self.SUB).pack(anchor="w", pady=(2, 14))
+
+        cards = tk.Frame(self.body, bg=self.BG)
+        cards.pack(fill="x")
+        for i, (title, t) in enumerate(periods):
+            card = tk.Frame(cards, bg=self.CARD, padx=16, pady=12, highlightthickness=1,
+                            highlightbackground="#e5e7eb")
+            card.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 10, 0))
+            cards.columnconfigure(i, weight=1)
+            self.label(card, title, size=10, color=self.SUB).pack(anchor="w")
+            self.label(card, mm_number(round(minutes_saved(t, cpm))) + " မိနစ်", size=18, bold=True,
+                       color="#22a06b").pack(anchor="w")
+            self.label(card, f"စာလုံး {mm_number(t['chars'])}\n{mm_number(t['count'])} ကြိမ် ပြောခဲ့",
+                       size=10, color=self.SUB, justify="left").pack(anchor="w", pady=(4, 0))
+
+        self.label(self.body, "🕘  မကြာခင်က ပြောခဲ့တဲ့စာ", size=12, bold=True).pack(anchor="w", pady=(18, 4))
+        history = list(self.app.history)[::-1]
+        if history:
+            self.list = tk.Listbox(self.body, height=min(8, len(history)), font=("Segoe UI", 11),
+                                   activestyle="none", relief="flat", highlightthickness=1,
+                                   highlightbackground="#e5e7eb", selectbackground="#dbeafe", selectforeground=self.INK)
+            for when, text in history:
+                self.list.insert("end", f"{when:%H:%M}   {preview(text, 70)}")
+            self.list.pack(fill="x")
+            self.list.bind("<Double-Button-1>", lambda e: self.copy())
+            self.label(self.body, "နှစ်ချက်နှိပ်ရင် Copy ကူးမယ် · app ပိတ်ရင် ဒီစာရင်း ပျောက်ပါမယ် (ဘယ်မှာမှ မသိမ်းပါ)",
+                       size=9, color=self.SUB).pack(anchor="w", pady=(4, 0))
+        else:
+            self.list = None
+            self.label(self.body, "မရှိသေးပါ", color=self.SUB).pack(anchor="w")
+
+        btns = tk.Frame(self.body, bg=self.BG)
+        btns.pack(fill="x", pady=(16, 0))
+        ttk.Button(btns, text="Close", command=self.win.destroy).pack(side="right")
+        if history:
+            ttk.Button(btns, text="📋 Copy", command=self.copy).pack(side="right", padx=6)
+        ttk.Button(btns, text="📝 စကားလုံးနဲ့ Shortcut...", command=lambda: self.app.ui.put(("words",))).pack(side="left")
+
+    def copy(self):
+        if not self.list or not self.list.curselection():
+            return
+        text = list(self.app.history)[::-1][self.list.curselection()[0]][1]
+        pyperclip.copy(text)
+        self.win.title(f"{APP_NAME} - Copy ကူးပြီးပါပြီ ✓")
+        self.win.after(1500, lambda: self.win.winfo_exists() and self.win.title(f"{APP_NAME} - Dashboard"))
+
+
+def preview(text, n):
+    text = " ".join(text.split())
+    return text if len(text) <= n else text[: n - 1] + "…"
 
 
 # ---------------------------------------------------------------- first-run wizard
@@ -972,6 +1421,11 @@ class App:
         self.hotkeys = {}
         self.settings = None
         self.wizard = None
+        self.words = None
+        self.dashboard = None
+        self.live = None           # LiveTranscriber of the current recording
+        self.stats = Stats()
+        self.history = deque(maxlen=20)  # (datetime, text), memory only
 
         self.root = tk.Tk()
         self.root.withdraw()
@@ -984,6 +1438,10 @@ class App:
             pystray.MenuItem(lambda _: f"⬆ Version အသစ် ရယူရန် ({self.latest[0]})" if self.latest else "",
                              lambda: webbrowser.open(self.latest[1]), visible=lambda _: bool(self.latest)),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem("🕘 မကြာခင်က စာ (Copy)", pystray.Menu(self.history_items),
+                             visible=lambda _: bool(self.history)),
+            pystray.MenuItem("📊 Dashboard...", lambda: self.ui.put(("dashboard",))),
+            pystray.MenuItem("📝 စကားလုံးနဲ့ Shortcut...", lambda: self.ui.put(("words",))),
             pystray.MenuItem("Settings...", lambda: self.ui.put(("settings",))),
             pystray.MenuItem("Setup wizard...", lambda: self.ui.put(("wizard",))),
             pystray.MenuItem("အကူအညီ (Help)", lambda: webbrowser.open(f"{REPO_URL}#readme")),
@@ -993,6 +1451,12 @@ class App:
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", self.quit),
         ))
+
+    def history_items(self):
+        def copier(text):
+            return lambda: pyperclip.copy(text)
+        for when, text in reversed(self.history):
+            yield pystray.MenuItem(f"{when:%H:%M}  {preview(text, 40)}", copier(text))
 
     # --- state
 
@@ -1020,6 +1484,9 @@ class App:
             if not self.enabled and self.recording:
                 self.recording = self.locked = False
                 self.recorder.stop()
+                if self.live:
+                    self.live.cancel()
+                    self.live = None
         self.set_state("idle" if self.enabled else "off")
         self.tray.update_menu()
 
@@ -1070,12 +1537,18 @@ class App:
             if not self.cfg["api_key"]:
                 self.ui.put(("wizard",))
                 return
+            live = None
+            if self.cfg["live"]:
+                live = LiveTranscriber(self.cfg, lambda text: self.show_live(live, text))
             try:
-                self.recorder.start()
+                self.recorder.start(listener=live.feed if live else None)
             except Exception as e:
                 log.error("Microphone error: %s", e)
+                if live:
+                    live.cancel()
                 self.set_state("idle", "Mic ဖွင့်လို့မရပါ")
                 return
+            self.live = live
             self.recording, self.mode, self.locked = True, mode, False
             self.started_at = time.time()
             self.session += 1
@@ -1108,36 +1581,62 @@ class App:
             if self.recording and self.session == session:
                 self.finish_recording()
 
+    def show_live(self, live, text):
+        if live is self.live:  # ignore late messages from an earlier recording
+            self.ui.put(("live", text))
+
     def finish_recording(self):
         self.recording = self.locked = False
         audio = self.recorder.stop()
+        live, self.live = self.live, None
         self.beep(600, 70)
         if audio is None or time.time() - self.started_at < self.cfg["min_seconds"]:
+            if live:
+                live.cancel()
             self.set_state("idle")
             return
         self.set_state("transcribing")
-        threading.Thread(target=self.process, args=(audio, self.mode), daemon=True).start()
+        threading.Thread(target=self.process, args=(audio, self.mode, live), daemon=True).start()
 
-    def process(self, audio, mode):
+    def transcribe(self, audio, live):
+        if live:
+            try:
+                return live.finish()
+            except Exception as e:
+                log.warning("Live transcription failed, sending the recording instead: %s", e)
+        return transcribe(self.cfg, to_wav_bytes(audio))
+
+    def process(self, audio, mode, live=None):
+        t0 = time.time()
         try:
-            text = transcribe(self.cfg, to_wav_bytes(audio))
+            text = self.transcribe(audio, live)
         except Exception as e:
             log.error("%s", e)
             self.beep(300, 250)
             self.set_state("idle", friendly_error(e))
             return
+        heard = time.time() - t0
         note = None
-        if text and (self.cfg["polish"] or mode == "translate"):
+        snippet = find_snippet(self.cfg, text) if text else None
+        if snippet:
+            text = snippet
+        elif text and (self.cfg["polish"] or mode == "translate"):
             try:
                 text = rewrite(self.cfg, text, translate=mode == "translate")
             except Exception as e:
                 log.warning("Rewrite failed, using raw transcript: %s", e)
                 if mode == "translate":
                     note = "ဘာသာပြန်လို့မရလို့ မြန်မာလိုပဲ ထည့်ထားပါတယ်"
+        if text and not snippet and mode == "dictate":
+            text = fix_words(self.cfg, text)
         if text:
             # Never log the text itself: it can be private.
-            log.info("Typed %d characters (%s)", len(text), mode)
+            log.info("Typed %d characters (%s%s) after %.1fs + %.1fs", len(text), mode,
+                     ", live" if live else "", heard, time.time() - t0 - heard)
             paste_text(text, keep=self.cfg["keep_in_clipboard"])
+            self.stats.add(len(text), len(audio) / SAMPLE_RATE)
+            self.history.append((datetime.now(), text))
+            self.tray.update_menu()
         if not self.enabled:
             self.set_state("off")
         elif note:
@@ -1177,10 +1676,16 @@ class App:
                 msg = self.ui.get_nowait()
                 if msg[0] == "indicator":
                     self.indicator.set_state(msg[1], msg[2], **msg[3])
+                elif msg[0] == "live":
+                    self.indicator.set_live(msg[1])
                 elif msg[0] == "settings":
                     self.open_settings()
                 elif msg[0] == "wizard":
                     self.open_wizard()
+                elif msg[0] == "words":
+                    self.words = self.open_window(self.words, WordsWindow)
+                elif msg[0] == "dashboard":
+                    self.dashboard = self.open_window(self.dashboard, DashboardWindow)
                 elif msg[0] == "quit":
                     self.root.destroy()
                     return
@@ -1201,6 +1706,13 @@ class App:
             self.wizard.win.focus_force()
             return
         self.wizard = SetupWizard(self)
+
+    def open_window(self, current, cls):
+        if current and current.win.winfo_exists():
+            current.win.lift()
+            current.win.focus_force()
+            return current
+        return cls(self)
 
     def quit(self, *_):
         self.tray.stop()

@@ -41,6 +41,9 @@ Install လုပ်နည်း၊ API key ယူနည်း၊ နေ့စ�
 
 ## ✨ Features
 
+- ⚡ **ပြောနေတုန်း စာပေါ်** — key ဖိပြောနေတုန်း စာကို တန်းမြင်ရ၊ လွှတ်တာနဲ့ စာဝင် ([Live](docs/GUIDE.md#live))
+- 🗣 **Shortcut** — "ငါ့လိပ်စာ" လို့ ပြောရုံနဲ့ လိပ်စာအပြည့် ဝင် · ✏️ အမြဲမှားတဲ့ စာလုံးကို အမြဲမှန်အောင် ပြင် ([အသေးစိတ်](docs/GUIDE.md#shortcuts))
+- 📊 **Dashboard** — အချိန် ဘယ်လောက် သက်သာလဲ၊ ခုနက ပြောခဲ့တဲ့စာ ပြန်ယူ ([အသေးစိတ်](docs/GUIDE.md#dashboard))
 - 🎯 **AI စာပြင်** — အကြားမှားတဲ့ စာလုံး၊ စာလုံးပေါင်း၊ ပုဒ်ဖြတ် (၊ ။) တွေကို အလိုလို ပြင်ပေး
 - 📋 **အလိုလို Copy** — Cursor ချဖို့ မေ့သွားလည်း စာမပျောက်၊ `Ctrl + V` နဲ့ ထည့်လို့ရ
 - 🌐 **English ဘာသာပြန်** — မြန်မာလို ပြောပြီး English စာ ထွက်
@@ -72,7 +75,9 @@ Install လုပ်နည်း၊ API key ယူနည်း၊ နေ့စ�
 
 - Hold **Right Ctrl**, speak, release — the transcript is pasted into the focused app.
 - Hold **Right Alt** to speak Burmese and get English text. Double-tap either key for hands-free dictation (tap again to stop, 5-minute cap).
-- Uses Google's [`gemini-3.5-transcribe`](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-transcribe) speech-to-text model with the `my-MM` language hint, plus an optional polish pass (`gemini-3.6-flash`) that fixes misheard words, spelling and punctuation, falling back to the raw transcript if it fails.
+- Live mode streams audio to [`gemini-3.5-transcribe-live`](https://ai.google.dev/gemini-api/docs/live-api/live-transcribe) over a WebSocket and shows the words above the pill while you speak; the final transcript is ready ~0.3 s after release. Falls back to batch transcription if streaming fails.
+- Voice shortcuts (say a phrase, get a stored snippet such as an address), personal word fixes, and a dashboard with estimated time saved plus the last 20 dictations (kept in memory only).
+- Batch mode uses Google's [`gemini-3.5-transcribe`](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-transcribe) speech-to-text model with the `my-MM` language hint, plus an optional polish pass (`gemini-3.6-flash`) that fixes misheard words, spelling and punctuation, falling back to the raw transcript if it fails.
 - Bring your own free [Gemini API key](https://aistudio.google.com/apikey); a Burmese setup wizard walks you through it.
 - Transcripts are never written to the log. Checks GitHub for new releases once a day (can be turned off).
 - ⚠️ The Gemini API is only available in [these regions](https://ai.google.dev/gemini-api/docs/available-regions) — Myanmar is currently not one of them.
