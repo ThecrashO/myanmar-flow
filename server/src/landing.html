@@ -185,6 +185,18 @@
     .editor .arrow { display: none; }
   }
 
+  /* open source */
+  .oss { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; }
+  @media (max-width: 860px) { .oss { grid-template-columns: 1fr; gap: 28px; } }
+  .repo { background: linear-gradient(160deg, var(--hero), var(--hero-2)); color: #fff; border-radius: 22px; padding: 28px; }
+  .repo .name { display: flex; align-items: center; gap: 10px; font: 700 17px "Inter", sans-serif; }
+  .repo .name svg { width: 26px; height: 26px; }
+  .repo p { color: #c3cdec; margin: 10px 0 18px; font-size: 15px; }
+  .repo .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .repo .tags span { font: 600 12px "Inter", sans-serif; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.1); color: #dbe4ff; }
+  .btn.gh { background: #fff; color: var(--hero); }
+  .btn.gh:hover { background: #dbe6ff; }
+
   /* small screens */
   body { overflow-wrap: break-word; }
   .split > *, .grid2 > *, .grid3 > * { min-width: 0; }
@@ -435,9 +447,6 @@
       <li><div><b>Mic စမ်းပြီး စပြောပါ</b><span>"မင်္ဂလာပါ" လို့ ပြောကြည့်ပါ။ စာပေါ်လာရင် အဆင်သင့် ဖြစ်ပါပြီ။</span></div></li>
       <li><div><b>လက်ကျန် ကြည့်ပြီး ငွေဖြည့်ပါ</b><span>Tray (Mac မှာ menu bar) icon ကို နှိပ်ရင် <b>⏳ လက်ကျန်</b> ကို မြင်ရပါမယ်။ ၁၀ မိနစ်အောက် ရောက်ရင် app က အသိပေးပါမယ်။</span></div></li>
     </ol>
-    <div class="btns" style="justify-content:flex-start;margin-top:28px">
-      <a class="btn line" href="https://github.com/ThecrashO/myanmar-flow/blob/main/docs/GUIDE.md" target="_blank" rel="noopener">📘 အသုံးပြုနည်း လမ်းညွှန် အပြည့်အစုံ</a>
-    </div>
   </div>
 </section>
 
@@ -459,6 +468,28 @@
       <p>ပုံမှန်ပြောတဲ့ စကားကို အတော်လေး မှန်ပါတယ်။ နာမည်လို အမြဲမှားတဲ့ စာလုံးတွေကို "စကားလုံးနဲ့ Shortcut" မှာ တစ်ခါ ပြင်ထားရင် နောက်ပိုင်း အမြဲမှန်ပါမယ်။ Code မဝယ်ခင် ကိုယ်ပိုင် key နဲ့ အခမဲ့ စမ်းကြည့်လို့ ရပါတယ်။</p></details>
     <details><summary>ဘယ်စက်တွေမှာ သုံးလို့ရလဲ</summary>
       <p>Windows 10/11 နဲ့ macOS 14 (Sonoma) နောက်ပိုင်း Mac တွေပါ — Apple Silicon (M1–M4) ရော Intel Mac ရော ရပါတယ်။ ဖုန်းမှာတော့ မရသေးပါ။</p></details>
+  </div>
+</section>
+
+<section class="tint" id="open-source">
+  <div class="wrap oss">
+    <div>
+      <p class="eyebrow">Open source</p>
+      <h2>Code အားလုံး <em>ပွင့်လင်း</em>ပါတယ်</h2>
+      <p class="lead">Myanmar Flow ရဲ့ code အားလုံးကို GitHub မှာ ဘယ်သူမဆို အခမဲ့ ကြည့်လို့ရပါတယ်။ App က ဘာတွေလုပ်လဲ၊ အသံကို ဘယ်ကို ပို့လဲ၊ Code server က ဘာတွေ မှတ်လဲ — အကုန် ကိုယ်တိုင် စစ်ကြည့်လို့ ရပါတယ်။ စိတ်ဝင်စားရင် ဝင်ကြည့်ပါ။</p>
+      <ul class="checks">
+        <li><div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></div>
+          <div><b>ဘာမှ ဖုံးကွယ်မထား</b><span>ပြောတဲ့စာကို မသိမ်းဘူး ဆိုတာ code ထဲမှာ ကိုယ်တိုင် ကြည့်လို့ရ။</span></div></li>
+        <li><div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></div>
+          <div><b>အတူတူ ပိုကောင်းအောင်</b><span>Developer တွေ အကြံပြုတာ၊ ပြင်ပေးတာ လက်ခံပါတယ်။ ပြဿနာ တွေ့ရင် GitHub မှာ မြန်မာလို တင်လို့ရ။</span></div></li>
+      </ul>
+    </div>
+    <div class="repo">
+      <div class="name"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5Z"/></svg>ThecrashO / myanmar-flow</div>
+      <p>Burmese voice typing for Windows and Mac — hold a key, speak မြန်မာ, text appears anywhere.</p>
+      <div class="tags"><span>Python</span><span>Gemini Live API</span><span>Cloudflare Workers</span><span>MIT License</span></div>
+      <a class="btn gh" href="https://github.com/ThecrashO/myanmar-flow" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5Z"/></svg>GitHub မှာ ဝင်ကြည့်မယ်</a>
+    </div>
   </div>
 </section>
 
@@ -511,7 +542,6 @@
   <div class="wrap">
     <span>© Myanmar Flow · by <a href="https://thecrasho.com" target="_blank" rel="noopener">ThecrashO</a></span>
     <span><a href="https://github.com/ThecrashO/myanmar-flow" target="_blank" rel="noopener">GitHub</a> ·
-      <a href="https://github.com/ThecrashO/myanmar-flow/blob/main/docs/GUIDE.md" target="_blank" rel="noopener">လမ်းညွှန်</a> ·
       <a href="https://github.com/ThecrashO/myanmar-flow/issues" target="_blank" rel="noopener">ပြဿနာ တင်ရန်</a></span>
   </div>
 </footer>
