@@ -27,7 +27,7 @@ jobs:
         run: python -c "import myanmar_flow as m; m.make_icon(m.STATE_COLORS['idle'], 256).save('icon.ico', sizes=[(16,16),(32,32),(48,48),(256,256)])"
 
       - name: Build exe
-        run: pyinstaller --noconfirm --onefile --windowed --name MyanmarFlow --icon icon.ico --hidden-import pystray._win32 myanmar_flow.py
+        run: pyinstaller --noconfirm --onefile --windowed --name MyanmarFlow --icon icon.ico --hidden-import pystray._win32 --exclude-module platform_mac myanmar_flow.py
 
       - name: Build installer
         shell: pwsh
@@ -46,24 +46,74 @@ jobs:
             dist/MyanmarFlow.exe
             dist/MyanmarFlow-Setup.exe
 
+  macos:
+    runs-on: macos-latest   # Apple Silicon (M1 and newer)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt pyinstaller
+
+      - name: Smoke test (pill on screen)
+        run: python tests/smoke_pill.py . pill-mac.png
+
+      - name: Build app
+        run: |
+          python -c "import myanmar_flow as m; m.make_icon(m.STATE_COLORS['idle'], 512).save('icon.png')"
+          pyinstaller --noconfirm --windowed --name MyanmarFlow --icon icon.png \
+            --osx-bundle-identifier com.thecrasho.myanmarflow \
+            --hidden-import pystray._darwin --exclude-module platform_win myanmar_flow.py
+          version="${GITHUB_REF_NAME#v}"; [ "$GITHUB_REF_TYPE" = "tag" ] || version="0.0.0"
+          plist=dist/MyanmarFlow.app/Contents/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$plist"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string 'Myanmar Flow'" "$plist"
+          /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$plist"
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Myanmar Flow listens while you hold the hotkey and turns your speech into text.'" "$plist"
+          # Editing Info.plist breaks PyInstaller's ad-hoc signature; Apple Silicon won't run unsigned code.
+          codesign --force --deep --sign - dist/MyanmarFlow.app
+          ditto -c -k --keepParent dist/MyanmarFlow.app dist/MyanmarFlow-mac.zip
+
+      - name: Smoke test (built app starts)
+        run: |
+          dist/MyanmarFlow.app/Contents/MacOS/MyanmarFlow &
+          pid=$!
+          sleep 12
+          log="$HOME/Library/Application Support/MyanmarFlow/myanmar_flow.log"
+          cat "$log" || true
+          kill -0 $pid   # still running
+          kill $pid
+          ! grep -q "Fatal error" "$log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos
+          path: |
+            dist/MyanmarFlow-mac.zip
+            pill-mac.png
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: windows
+    needs: [windows, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
-        with:
-          name: windows
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            MyanmarFlow-Setup.exe
-            MyanmarFlow.exe
+            windows/MyanmarFlow-Setup.exe
+            windows/MyanmarFlow.exe
+            macos/MyanmarFlow-mac.zip
           body: |
             ## Download
 
-            - **MyanmarFlow-Setup.exe** — ထည့်သွင်းရန် (အကြံပြု) / Installer (recommended)
-            - **MyanmarFlow.exe** — Install မလုပ်ဘဲ တိုက်ရိုက်ဖွင့်ရန် / Portable
+            - **MyanmarFlow-Setup.exe** — Windows မှာ ထည့်သွင်းရန် (အကြံပြု) / Windows installer (recommended)
+            - **MyanmarFlow.exe** — Windows မှာ Install မလုပ်ဘဲ တိုက်ရိုက်ဖွင့်ရန် / Windows portable
+            - **MyanmarFlow-mac.zip** — Mac (M1 နဲ့ အသစ်) အတွက် / macOS, Apple Silicon
 
             Setup လမ်းညွှန်: https://github.com/ThecrashO/myanmar-flow#readme

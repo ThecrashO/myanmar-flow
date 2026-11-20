@@ -1,8 +1,11 @@
-keyboard
 numpy
 pillow
-pyperclip
 pystray
 requests
 sounddevice
 websocket-client
+keyboard; sys_platform == "win32"
+pyperclip; sys_platform == "win32"
+pynput; sys_platform == "darwin"
+pyobjc-framework-Cocoa; sys_platform == "darwin"
+pyobjc-framework-ApplicationServices; sys_platform == "darwin"
