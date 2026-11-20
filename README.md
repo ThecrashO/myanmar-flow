@@ -42,7 +42,7 @@
 ## သိထားရန်
 
 - **Internet** လိုပါတယ်။ Free API key မှာ **တစ်ရက် limit** ရှိပါတယ် ([အသေးစိတ်](docs/GUIDE.md#s12))။
-- Google က **မြန်မာနိုင်ငံထဲမှာ Gemini API ကို ခွင့်မပြုသေးပါ** ([စာရင်း](https://ai.google.dev/gemini-api/docs/available-regions))။
+- Google က **မြန်မာနိုင်ငံထဲမှာ Gemini API ကို ခွင့်မပြုသေးပါ** ([စာရင်း](https://ai.google.dev/gemini-api/docs/available-regions))။ မြန်မာပြည်ထဲကနေ **ကိုယ်ပိုင် key** နဲ့ သုံးရင် **VPN ဖွင့်ထားရပါမယ်** (key ယူတုန်းရော သုံးနေတုန်းပါ)။ **Code** နဲ့ သုံးရင်တော့ VPN မလိုပါ ([အသေးစိတ်](docs/GUIDE.md#code))။
 
 **အကူအညီ:** [ပြဿနာဖြေရှင်းနည်း](docs/GUIDE.md#s14) · [FAQ](docs/GUIDE.md#s15) · [ပြဿနာ / အကြံ တင်ရန်](https://github.com/ThecrashO/myanmar-flow/issues/new/choose) (မြန်မာလို ရေးလို့ရ)
 
@@ -54,7 +54,7 @@
 
 **Myanmar Flow** is a small tray / menu-bar app for Burmese voice typing on Windows and macOS (Apple Silicon and Intel). Hold **Right Ctrl** (Mac: **Right Option**), speak, release, and the text is pasted into whatever app has focus. Hold **Right Alt** (Mac: **Right Command**) to speak Burmese and get English. Double-tap either key for hands-free dictation. On a Mac, allow Microphone and Accessibility when asked.
 
-It uses your own free [Gemini API key](https://aistudio.google.com/apikey). The Gemini API is [not available in Myanmar](https://ai.google.dev/gemini-api/docs/available-regions) yet.
+It uses your own free [Gemini API key](https://aistudio.google.com/apikey). The Gemini API is [not available in Myanmar](https://ai.google.dev/gemini-api/docs/available-regions) yet, so inside Myanmar an own key needs a VPN. A Myanmar Flow Code works without one.
 
 <details>
 <summary><b>How it works and building from source</b></summary>
