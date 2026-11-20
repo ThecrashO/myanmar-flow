@@ -38,7 +38,58 @@
 16. [Privacy (ကိုယ်ရေးလုံခြုံမှု)](#s16)
 17. [အကူအညီ တောင်းနည်း](#s17)
 
+**[🍎 Mac မှာ သုံးနည်း](#mac)** — Mac သုံးသူတွေ ဒီမှာ စဖတ်ပါ
+
 **[⚡ အတိုချုပ် cheat sheet](#cheat-sheet)** — အမြန်ပြန်ကြည့်ချင်ရင်
+
+---
+
+<a name="mac"></a>
+
+## 🍎 Mac မှာ သုံးနည်း
+
+Mac version က Windows version နဲ့ အတူတူပါပဲ။ မတူတာတွေကိုပဲ ဒီမှာ ရေးထားပါတယ်။ ကျန်တာ (API key ယူနည်း၊ Settings၊ Shortcut ...) ကို အောက်က အပိုင်းတွေအတိုင်း လုပ်ပါ။
+
+> ⚠️ **Apple Silicon (M1, M2, M3, M4 ...) Mac** တွေမှာပဲ သုံးလို့ရသေးပါတယ်။ Intel Mac တွေမှာ မရသေးပါ။
+> ( Apple menu  → **About This Mac** → **Chip** မှာ "Apple M..." လို့ ပေါ်ရင် ရပါတယ်)
+
+### Install လုပ်နည်း
+
+1. [Release စာမျက်နှာ](https://github.com/ThecrashO/myanmar-flow/releases/latest) ကနေ **`MyanmarFlow-mac.zip`** ကို download လုပ်ပါ
+2. Zip ကို နှစ်ချက်နှိပ်ဖွင့်ပါ → ထွက်လာတဲ့ **MyanmarFlow** ကို **Applications** folder ထဲ ဆွဲထည့်ပါ
+3. ပထမဆုံးအကြိမ် ဖွင့်တဲ့အခါ **Right-click → Open → Open** ကို နှိပ်ပါ
+   - "Apple could not verify..." ပေါ်ရင် **System Settings → Privacy & Security** ကိုသွားပြီး အောက်နားက **Open Anyway** ကိုနှိပ်ပါ
+   - (Apple ကို ပိုက်ဆံပေးပြီး လက်မှတ် မထိုးထားလို့ ပေါ်တာပါ။ app က ဘေးကင်းပါတယ်)
+
+### ခွင့်ပြုချက် ၂ ခု ပေးရပါမယ်
+
+| ခွင့်ပြုချက် | ဘာလို့လဲ | ဘယ်မှာ ပေးရလဲ |
+|---|---|---|
+| 🎙️ **Microphone** | အသံဖမ်းဖို့ | ပထမဆုံး ပြောတဲ့အခါ box ပေါ်လာရင် **Allow** |
+| ⌨️ **Accessibility** | Key ဖိတာ သိဖို့နဲ့ စာ Paste လုပ်ဖို့ | **System Settings → Privacy & Security → Accessibility** မှာ **MyanmarFlow** ကို ဖွင့်ပါ |
+
+> Accessibility ဖွင့်ပြီးရင် app ကို **ပိတ်ပြီး ပြန်ဖွင့်**ပါ (menu bar icon → Quit)။ မဟုတ်ရင် key ဖိလို့ ဘာမှ မဖြစ်တာမျိုး ရှိနိုင်ပါတယ်။
+
+### Key တွေ
+
+Mac keyboard မှာ ညာဘက် Ctrl မရှိလို့ ဒီ key တွေကို သုံးပါတယ်:
+
+| လုပ်ချင်တာ | Mac မှာ |
+|---|---|
+| 🇲🇲 မြန်မာလို ရိုက်မယ် | **ညာဘက် `Option ⌥`** ဖိ → ပြော → လွှတ် |
+| 🇬🇧 မြန်မာလိုပြော၊ English ထွက် | **ညာဘက် `Command ⌘`** ဖိ → ပြော → လွှတ် |
+| 🙌 စာရှည် လက်မလိုဘဲ | Key **၂ ချက်** နှိပ် → ပြော → **၁ ချက်** နှိပ်ရင် ရပ် |
+| 📋 Copy ကူးထားတဲ့စာ ထည့် | **`⌘V`** |
+
+- Key ဖိပြီး ချက်ချင်း တခြား key နှိပ်ရင် (ဥပမာ `⌘C`) အသံမဖမ်းဘဲ ပယ်ပေးပါတယ်။ ဒါကြောင့် Shortcut တွေ ပုံမှန်အတိုင်း သုံးလို့ရပါတယ်။
+- Key ပြောင်းချင်ရင် Settings မှာ `right option`, `right command`, `right ctrl`, `right shift`, `f13` ... စသဖြင့် ရေးလို့ရပါတယ်။
+
+### Icon နဲ့ ဖိုင်တွေ
+
+- 🟢 Icon က screen **အပေါ်ညာဘက် menu bar** မှာ ပေါ်ပါတယ် (Windows မှာ နာရီဘေး)။ နှိပ်ရင် menu ပွင့်ပါတယ်။
+- Dock မှာ icon မပေါ်ပါ (နောက်ကွယ်မှာ အလုပ်လုပ်နေတာပါ)။
+- Settings တွေ သိမ်းတဲ့နေရာ: `~/Library/Application Support/MyanmarFlow/`
+- ဖျက်ချင်ရင်: Applications ထဲက MyanmarFlow ကို Trash ထဲ ဆွဲထည့်ပါ။ Mac စဖွင့်ရင် အလိုလိုဖွင့်တာ ပိတ်ချင်ရင် Settings မှာ အရင် ပိတ်ပါ။
 
 ---
 
@@ -48,7 +99,7 @@
 
 ## 1. Myanmar Flow ဆိုတာ ဘာလဲ
 
-Myanmar Flow က **မြန်မာလို ပြောလိုက်တာကို စာအဖြစ် ချက်ချင်း ရိုက်ပေးတဲ့** Windows program လေးပါ။
+Myanmar Flow က **မြန်မာလို ပြောလိုက်တာကို စာအဖြစ် ချက်ချင်း ရိုက်ပေးတဲ့** Windows နဲ့ Mac program လေးပါ။
 
 - **ဘယ် app မှာမဆို** သုံးလို့ရပါတယ် — Facebook, Messenger, Viber, Gmail, Word, Excel, Notepad, Chrome ... cursor (စာရိုက်တဲ့ မျဉ်းတောင်လေး) ရှိတဲ့ နေရာတိုင်းမှာ။
 - Key တစ်ခုကို **ဖိထား → ပြော → လွှတ်** ရုံပါပဲ။ Keyboard နဲ့ မြန်မာစာ ရိုက်စရာ မလိုတော့ပါဘူး။
@@ -65,7 +116,7 @@ Myanmar Flow က **မြန်မာလို ပြောလိုက်တာ
 
 | လိုအပ်တာ | မှတ်ချက် |
 |---|---|
-| 💻 **Windows 10 သို့မဟုတ် 11** ကွန်ပျူတာ | Mac / ဖုန်း မရသေးပါ |
+| 💻 **Windows 10 / 11** ဒါမှမဟုတ် **Mac** (M1 နဲ့ အသစ်) | Mac အတွက် [ဒီမှာ](#mac) ဖတ်ပါ။ ဖုန်း မရသေးပါ |
 | 🎙️ **Microphone** | Laptop မှာ ပါပြီးသားပါ။ Headset mic ဆို ပိုကြည်ပါတယ် |
 | 🌐 **Internet** | ပြောတိုင်း အသံကို Google ဆီ ပို့ရလို့ပါ |
 | 📧 **Google account** (Gmail) | API key ယူဖို့ပါ — **အခမဲ့** |
