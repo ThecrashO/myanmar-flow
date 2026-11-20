@@ -47,7 +47,8 @@
   .navlinks { display: flex; gap: 26px; align-items: center; }
   .navlinks a { color: #c9d4f5; text-decoration: none; font-size: 14px; font-weight: 600; }
   .navlinks a:hover { color: #fff; }
-  .navlinks .pill { background: #fff; color: var(--hero); padding: 8px 16px; border-radius: 10px; }
+  .navlinks a.pill { background: #fff; color: var(--hero); padding: 8px 16px; border-radius: 10px; }
+  .navlinks a.pill:hover, .navlinks a.pill:active { background: #dbe6ff; color: var(--hero); }
   @media (max-width: 760px) { .navlinks a:not(.pill) { display: none; } }
 
   /* hero */
@@ -405,7 +406,7 @@
     <div>
       <p class="eyebrow">Code ဝယ်ရန် · ဆက်သွယ်ရန်</p>
       <h2 style="color:#fff">မေးချင်တာရှိရင် <em style="color:var(--accent-2)">တိုက်ရိုက်</em> ဆက်သွယ်ပါ</h2>
-      <p class="lead">Form ဖြည့်ပြီး Messenger ဒါမှမဟုတ် Telegram ကနေ ပို့လိုက်ရင် စာက အဆင်သင့် ရေးပြီးသား ဖြစ်နေပါမယ်။ အမြန်ဆုံး ပြန်ဖြေပေးပါမယ်။</p>
+      <p class="lead">Form ဖြည့်ပြီး Messenger ဒါမှမဟုတ် Telegram ခလုတ်ကို နှိပ်လိုက်ရင် စာက အဆင်သင့် ရေးပြီးသား ဖြစ်နေပါမယ် — Send ပဲ နှိပ်ရုံပါ။ အမြန်ဆုံး ပြန်ဖြေပေးပါမယ်။</p>
       <div class="direct">
         <a href="https://m.me/thecrashoai" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.4 2 2 6.1 2 11.7c0 2.9 1.2 5.5 3.2 7.2v3.5l3-1.7c1.2.3 2.5.5 3.8.5 5.6 0 10-4.1 10-9.6S17.6 2 12 2Zm1 12.9-2.5-2.7-5 2.7 5.5-5.8 2.6 2.7 4.9-2.7-5.5 5.8Z"/></svg>
@@ -476,15 +477,16 @@
     var text = message();
     $("preview").textContent = text;
     $("toMessenger").href = "https://m.me/thecrashoai?text=" + encodeURIComponent(text);
+    $("toTelegram").href = "https://t.me/thecrashO?text=" + encodeURIComponent(text);
   }
   document.getElementById("order").addEventListener("input", update);
   document.getElementById("order").addEventListener("change", update);
-  // Telegram links can't carry the text, so copy it for the person to paste.
+  // Telegram fills the text in from the link on most apps; copy it too in case one doesn't.
   $("toTelegram").addEventListener("click", function () {
     var text = message();
     try {
       navigator.clipboard.writeText(text).then(function () {
-        $("copied").textContent = "စာကို Copy ကူးပြီးပါပြီ — Telegram မှာ Paste လုပ်ပြီး ပို့ပါ";
+        $("copied").textContent = "Telegram မှာ စာ ရေးပြီးသား ဖြစ်နေပါမယ်။ မပါလာရင် Paste လုပ်ပြီး ပို့ပါ (Copy ကူးထားပြီးပါပြီ)";
       });
     } catch (e) {}
   });
