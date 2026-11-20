@@ -46,8 +46,11 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 CONFIG_PATH = DATA_DIR / "config.json"
 STATS_PATH = DATA_DIR / "stats.json"
 LOG_PATH = DATA_DIR / "myanmar_flow.log"
-LIVE_URL = ("wss://generativelanguage.googleapis.com/ws/"
-            "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent")
+GOOGLE_API = "https://generativelanguage.googleapis.com"
+LIVE_PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+# The owner's top-up server: people with a Myanmar Flow code use it instead of their own key.
+# It speaks the same paths as Google, so only the address and the login change.
+CODE_SERVER = os.environ.get("MF_SERVER", "")
 SAMPLE_RATE = 16000
 UPDATE_API = "https://api.github.com/repos/ThecrashO/myanmar-flow/releases/latest"
 MAX_RECORD_SECONDS = 300
@@ -79,6 +82,8 @@ log = logging.getLogger(APP_NAME)
 DEFAULT_CONFIG = {
     "config_version": 2,
     "api_key": "",
+    # A code bought from the owner (MF-XXXX-XXXX). When set, it's used instead of api_key.
+    "pro_code": "",
     "model": "gemini-3.5-transcribe",
     # Used only by *-transcribe models (Interactions API).
     "language_codes": ["my-MM", "en-US"],
@@ -146,6 +151,44 @@ def save_config(cfg):
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def using_code(cfg):
+    return bool(cfg.get("pro_code") and CODE_SERVER)
+
+
+def has_credentials(cfg):
+    return using_code(cfg) or bool(cfg["api_key"])
+
+
+def api_base(cfg):
+    return CODE_SERVER.rstrip("/") if using_code(cfg) else GOOGLE_API
+
+
+def api_headers(cfg):
+    if using_code(cfg):
+        return {"Authorization": f"Bearer {cfg['pro_code']}"}
+    return {"x-goog-api-key": cfg["api_key"]}
+
+
+def live_url(cfg):
+    return api_base(cfg).replace("http", "ws", 1) + LIVE_PATH
+
+
+def code_balance(code):
+    """(seconds left, None) for a code, or (None, Burmese explanation)."""
+    try:
+        resp = requests.get(CODE_SERVER.rstrip("/") + "/mf/balance",
+                            headers={"Authorization": f"Bearer {code}"}, timeout=20)
+    except requests.RequestException as e:
+        return None, friendly_error(e)
+    if resp.status_code == 200:
+        return resp.json().get("seconds", 0), None
+    return None, friendly_error(RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}"))
+
+
+def minutes_text(seconds):
+    return f"{mm_number(int(seconds // 60))} မိနစ်"
+
+
 # ---------------------------------------------------------------- audio / API
 
 class Recorder:
@@ -195,7 +238,7 @@ def to_wav_bytes(audio):
 
 
 def transcribe(cfg, wav_bytes):
-    if "transcribe" in cfg["model"]:
+    if "transcribe" in cfg["model"] or using_code(cfg):  # the code server only offers the transcribe models
         return transcribe_interactions(cfg, wav_bytes)
     return transcribe_generate(cfg, wav_bytes)
 
@@ -208,13 +251,13 @@ def transcribe_interactions(cfg, wav_bytes):
     if vocabulary(cfg):
         transcription_config["custom_vocabulary"] = vocabulary(cfg)
     body = {
-        "model": cfg["model"],
+        "model": cfg["model"] if "transcribe" in cfg["model"] else DEFAULT_CONFIG["model"],
         "input": [{"type": "audio", "data": base64.b64encode(wav_bytes).decode(), "mime_type": "audio/wav"}],
         "generation_config": {"transcription_config": transcription_config},
     }
     resp = requests.post(
-        "https://generativelanguage.googleapis.com/v1beta/interactions",
-        json=body, headers={"x-goog-api-key": cfg["api_key"]}, timeout=60,
+        api_base(cfg) + "/v1beta/interactions",
+        json=body, headers=api_headers(cfg), timeout=60,
     )
     if resp.status_code != 200:
         raise RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}")
@@ -265,8 +308,8 @@ class LiveTranscriber:
             "inputAudioTranscription": transcription,
         }}
         try:
-            self.ws = websocket.create_connection(LIVE_URL, timeout=10,
-                                                  header=[f"x-goog-api-key: {self.cfg['api_key']}"])
+            headers = [f"{k}: {v}" for k, v in api_headers(self.cfg).items()]
+            self.ws = websocket.create_connection(live_url(self.cfg), timeout=10, header=headers)
             self.ws.send(json.dumps(setup))
             reply = self.ws.recv()
             if "setupComplete" not in str(reply):
@@ -344,13 +387,13 @@ class LiveTranscriber:
 
 def generate(cfg, model, parts, system=None, generation_config=None, timeout=60):
     """One generateContent call; returns the response text."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    url = f"{api_base(cfg)}/v1beta/models/{model}:generateContent"
     body = {"contents": [{"parts": parts}]}
     if system:
         body["systemInstruction"] = {"parts": [{"text": system}]}
     if generation_config:
         body["generationConfig"] = generation_config
-    resp = requests.post(url, json=body, headers={"x-goog-api-key": cfg["api_key"]}, timeout=timeout)
+    resp = requests.post(url, json=body, headers=api_headers(cfg), timeout=timeout)
     if resp.status_code != 200:
         raise RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}")
     data = resp.json()
@@ -563,6 +606,14 @@ def friendly_error(err):
         return "အင်တာနက် ချိတ်မရပါ"
     if isinstance(err, requests.Timeout):
         return "အင်တာနက် နှေးလွန်းပါတယ် - ထပ်စမ်းပါ"
+    if "mf_no_minutes" in msg or "error 402" in msg or "status 402" in msg:
+        return "မိနစ် ကုန်သွားပါပြီ - ငွေဖြည့်ပါ"
+    if "mf_code_disabled" in msg:
+        return "ဒီ Code ကို ပိတ်ထားပါတယ်"
+    if "mf_code_invalid" in msg:
+        return "Code မှားနေပါတယ် - Settings မှာစစ်ပါ"
+    if "mf_" in msg:  # model not allowed, bad audio and so on
+        return "ဒီ setting ကို Code နဲ့ သုံးလို့မရပါ - Log ကိုကြည့်ပါ"
     if "location is not supported" in msg:
         return "ဒီနေရာကနေ Gemini သုံးခွင့်မရှိပါ"
     if "api_key_invalid" in msg or "api key not valid" in msg or "error 401" in msg or "error 403" in msg:
@@ -906,6 +957,7 @@ class SettingsWindow:
 
         self.vars = {
             "api_key": tk.StringVar(value=cfg["api_key"]),
+            "pro_code": tk.StringVar(value=cfg["pro_code"]),
             "hotkey": tk.StringVar(value=cfg["hotkey"]),
             "translate_hotkey": tk.StringVar(value=cfg["translate_hotkey"]),
             "model": tk.StringVar(value=cfg["model"]),
@@ -923,6 +975,12 @@ class SettingsWindow:
 
         rows = [
             ("Gemini API key", ttk.Entry(frm, textvariable=self.vars["api_key"], show="•", width=44)),
+        ]
+        if CODE_SERVER:
+            self.balance = ttk.Label(frm, text="", foreground="#6b7280")
+            rows += [("Myanmar Flow Code (key အစား)", ttk.Entry(frm, textvariable=self.vars["pro_code"], width=44)),
+                     ("", self.balance)]
+        rows += [
             ("Hotkey (ဖိထားပြီးပြောရန်)", ttk.Entry(frm, textvariable=self.vars["hotkey"], width=44)),
             ("English ဘာသာပြန် hotkey", ttk.Entry(frm, textvariable=self.vars["translate_hotkey"], width=44)),
             ("Speech model", ttk.Combobox(frm, textvariable=self.vars["model"], width=42,
@@ -941,6 +999,8 @@ class SettingsWindow:
         link = ttk.Label(frm, text="API key ယူရန် → aistudio.google.com/apikey", foreground="#2f6feb", cursor="hand2")
         link.grid(row=n, column=1, sticky="w")
         link.bind("<Button-1>", lambda e: webbrowser.open("https://aistudio.google.com/apikey"))
+        if CODE_SERVER and cfg["pro_code"]:
+            self.show_balance(cfg["pro_code"])
         checks = [
             ("⚡ ပြောနေတုန်း စာကို တန်းပြမယ် (Live — စောင့်ချိန် နည်း)", self.live),
             ("AI နဲ့ စာပြင်ပေးမယ် (ပိုတိကျ၊ ၁-၃ စက္ကန့် ပိုကြာ)", self.polish),
@@ -964,10 +1024,20 @@ class SettingsWindow:
         self.win.geometry(f"+{(sw - self.win.winfo_width()) // 2}+{(sh - self.win.winfo_height()) // 3}")
         self.win.focus_force()
 
+    def show_balance(self, code):
+        self.balance.config(text="လက်ကျန် စစ်နေတယ်...")
+
+        def done(result, error):
+            seconds, problem = result or (None, friendly_error(error))
+            if self.balance.winfo_exists():
+                self.balance.config(text=problem or f"လက်ကျန် {minutes_text(seconds)}")
+        run_in_background(self.win, lambda: code_balance(code), done)
+
     def save(self):
         split = lambda s: [x.strip() for x in s.split(",") if x.strip()]
         cfg = dict(self.app.cfg)
         cfg["api_key"] = self.vars["api_key"].get().strip()
+        cfg["pro_code"] = self.vars["pro_code"].get().strip().upper()
         cfg["hotkey"] = self.vars["hotkey"].get().strip() or DEFAULT_CONFIG["hotkey"]
         cfg["translate_hotkey"] = self.vars["translate_hotkey"].get().strip()
         cfg["model"] = self.vars["model"].get().strip() or DEFAULT_CONFIG["model"]
@@ -1214,9 +1284,12 @@ class SetupWizard:
         self.para("① အောက်က ခလုတ်ကိုနှိပ်ပြီး Google account နဲ့ ဝင်ပါ\n"
                   "② \"Create API key\" ကိုနှိပ်ပြီး key ကို Copy ကူးပါ\n"
                   "③ ဒီအောက်က အကွက်ထဲ Paste လုပ်ပြီး \"စစ်ဆေးမယ်\" နှိပ်ပါ")
+        if CODE_SERVER:
+            self.para("Myanmar Flow Code (MF-XXXX-XXXX) ဝယ်ထားရင် key အစား Code ကို ထည့်လို့ရပါတယ်။",
+                      foreground="#6b7280")
         ttk.Button(self.body, text="🔑  API key ယူရန် (aistudio.google.com)",
                    command=lambda: webbrowser.open("https://aistudio.google.com/apikey")).pack(anchor="w", pady=8)
-        self.key_var = tk.StringVar(value=self.cfg["api_key"])
+        self.key_var = tk.StringVar(value=self.cfg["pro_code"] if using_code(self.cfg) else self.cfg["api_key"])
         entry = ttk.Entry(self.body, textvariable=self.key_var, show="•", width=60)
         entry.pack(anchor="w", fill="x")
         entry.focus_set()
@@ -1227,6 +1300,7 @@ class SetupWizard:
 
     def check_key(self):
         key = self.key_var.get().strip()
+        is_code = bool(CODE_SERVER) and re.fullmatch(r"MF[\s-]?\w{4}[\s-]?\w{4}", key, re.I) is not None
         if not key:
             self.key_status.configure(text="Key ကို အရင် Paste လုပ်ပါ", foreground="#e5484d")
             return
@@ -1242,12 +1316,16 @@ class SetupWizard:
                     hint = "\n(Google က ဒီနိုင်ငံ/ဒေသကို Gemini ခွင့်မပြုသေးပါ)"
                 self.key_status.configure(text=f"❌ {problem}{hint}", foreground="#e5484d")
                 return
-            self.cfg["api_key"] = key
+            if is_code:
+                self.cfg["pro_code"] = key.upper()
+            else:
+                self.cfg["api_key"], self.cfg["pro_code"] = key, ""
             save_config(self.cfg)
             self.app.apply_config(self.cfg)
             self.step_mic()
 
-        run_in_background(self.win, lambda: check_api_key(key), done)
+        check = (lambda: code_balance(key)[1]) if is_code else (lambda: check_api_key(key))
+        run_in_background(self.win, check, done)
 
     # --- step 2: microphone test
 
@@ -1360,6 +1438,8 @@ class App:
         self.live = None           # LiveTranscriber of the current recording
         self.stats = Stats()
         self.history = deque(maxlen=20)  # (datetime, text), memory only
+        self.balance = None        # seconds left on the Myanmar Flow code, if one is used
+        self.low_warned = False
 
         self.root = tk.Tk()
         self.root.withdraw()
@@ -1372,6 +1452,8 @@ class App:
             pystray.MenuItem(lambda _: f"⬆ Version အသစ် ရယူရန် ({self.latest[0]})" if self.latest else "",
                              lambda: webbrowser.open(self.latest[1]), visible=lambda _: bool(self.latest)),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem(lambda _: f"⏳ လက်ကျန် {minutes_text(self.balance or 0)}", None, enabled=False,
+                             visible=lambda _: using_code(self.cfg) and self.balance is not None),
             pystray.MenuItem("🕘 မကြာခင်က စာ (Copy)", pystray.Menu(self.history_items),
                              visible=lambda _: bool(self.history)),
             pystray.MenuItem("📊 Dashboard...", lambda: self.ui.put(("dashboard",))),
@@ -1445,8 +1527,30 @@ class App:
 
     def apply_config(self, cfg):
         self.cfg = cfg
+        self.refresh_balance()
         self.bind_hotkey()
         self.set_state("idle" if self.enabled else "off")
+
+    def refresh_balance(self):
+        """Fetch the code's minutes in the background; warn once when they run low."""
+        if not using_code(self.cfg):
+            self.balance = None
+            self.update_menu()
+            return
+
+        def work():
+            seconds, problem = code_balance(self.cfg["pro_code"])
+            if problem:
+                log.info("Balance check: %s", problem)
+                return
+            self.balance = seconds
+            self.update_menu()
+            if seconds < 600 and not self.low_warned:
+                self.low_warned = True
+                self.notify(f"Code မှာ {minutes_text(seconds)}ပဲ ကျန်ပါတော့တယ်။ ငွေဖြည့်ဖို့ ဆက်သွယ်ပါ။")
+            elif seconds >= 600:
+                self.low_warned = False
+        threading.Thread(target=work, daemon=True).start()
 
     def bind_hotkey(self):
         keys = [("dictate", self.cfg["hotkey"]), ("translate", self.cfg["translate_hotkey"])]
@@ -1480,7 +1584,7 @@ class App:
                     self.ignore_release = True
                     self.finish_recording()
                 return
-            if not self.cfg["api_key"]:
+            if not has_credentials(self.cfg):
                 self.ui.put(("wizard",))
                 return
             live = None
@@ -1583,6 +1687,8 @@ class App:
             self.stats.add(len(text), len(audio) / SAMPLE_RATE)
             self.history.append((datetime.now(), text))
             self.update_menu()
+        if using_code(self.cfg):
+            self.refresh_balance()
         if not self.enabled:
             self.set_state("off")
         elif note:
@@ -1688,9 +1794,10 @@ class App:
             # macOS shows its own dialog; hotkeys and paste work once it's allowed.
             log.warning("Accessibility permission not granted yet")
             self.set_state("idle", "System Settings မှာ Accessibility ခွင့်ပြုပေးပါ")
-        if not self.cfg["api_key"]:
+        if not has_credentials(self.cfg):
             self.ui.put(("wizard",))
         else:
+            self.refresh_balance()
             self.notify(f"[{self.cfg['hotkey']}] ကို ဖိထားပြီး ပြောပါ။")
         threading.Thread(target=self.update_loop, daemon=True).start()
         self.root.after(50, self.pump_ui)

@@ -1,0 +1,16 @@
+name = "myanmar-flow"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Run near Google rather than near the user, so calls don't come from a country Gemini doesn't serve.
+[placement]
+mode = "smart"
+
+# Secrets (never put them in this file):
+#   npx wrangler secret put GEMINI_API_KEY   your paid Gemini API key
+#   npx wrangler secret put ADMIN_TOKEN      a long random password for the admin page
+
+[[d1_databases]]
+binding = "DB"
+database_name = "myanmar-flow"
+database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
