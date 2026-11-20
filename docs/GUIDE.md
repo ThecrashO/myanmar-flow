@@ -56,6 +56,8 @@ Mac version က Windows version နဲ့ အတူတူပါပဲ။ မတ�
 > |---|---|
 > | **Chip**: Apple M1, M2, M3, M4 ... | **`MyanmarFlow-mac.zip`** |
 > | **Processor**: Intel Core ... | **`MyanmarFlow-mac-intel.zip`** |
+>
+> macOS **14 (Sonoma) ဒါမှမဟုတ် အသစ်** လိုပါတယ်။ ( → About This Mac → **macOS** မှာ ကြည့်ပါ)
 
 ### Install လုပ်နည်း
 
