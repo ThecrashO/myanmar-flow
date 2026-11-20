@@ -165,6 +165,26 @@
   .direct svg { width: 22px; height: 22px; flex: none; color: var(--accent-2); }
   .direct small { display: block; color: #93a2cf; font-size: 13px; }
 
+  /* shortcuts */
+  .editor { margin-top: 18px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); font-size: 14.5px; }
+  .editor .bar { background: var(--tint); color: var(--muted); font: 600 12px "Inter", sans-serif; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  .editor .row { display: grid; grid-template-columns: 1fr auto 1.4fr; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+  .editor .row:first-of-type { border-top: 0; }
+  .editor .say { font-weight: 600; }
+  .editor .arrow { color: var(--accent); font-weight: 700; }
+  .editor .out { color: var(--muted); }
+  .demo { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; margin-top: 32px; }
+  .demo .bubble { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .demo .bubble small { display: block; font: 700 11px "Inter", sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+  .demo .go { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; }
+  .demo .go svg { width: 22px; height: 22px; }
+  @media (max-width: 680px) {
+    .demo { grid-template-columns: 1fr; justify-items: stretch; }
+    .demo .go { justify-self: center; transform: rotate(90deg); }
+    .editor .row { grid-template-columns: 1fr; gap: 2px; }
+    .editor .arrow { display: none; }
+  }
+
   /* small screens */
   body { overflow-wrap: break-word; }
   .split > *, .grid2 > *, .grid3 > * { min-width: 0; }
@@ -201,6 +221,7 @@
     </a>
     <div class="navlinks">
       <a href="#how">အသုံးပြုပုံ</a>
+      <a href="#shortcuts">Shortcut</a>
       <a href="#ways">Key နဲ့ Code</a>
       <a href="#pricing">ဈေးနှုန်း</a>
       <a href="#faq">မေးလေ့ရှိတာ</a>
@@ -293,7 +314,47 @@
   </div>
 </section>
 
-<section id="ways">
+<section id="shortcuts">
+  <div class="wrap">
+    <p class="eyebrow">Shortcut နဲ့ စာလုံးပြင်</p>
+    <h2>အတိုလေး ပြော၊ <em>အရှည်ကြီး</em> ထွက်</h2>
+    <p class="lead">လိပ်စာ၊ ဖုန်းနံပါတ်၊ ဘဏ်အကောင့် လို ခဏခဏ ရိုက်ရတာတွေကို စကားလုံး တစ်လုံးတည်းနဲ့ ထည့်လို့ရပါတယ်။ Tray icon → <b>📝 စကားလုံးနဲ့ Shortcut...</b> မှာ ထည့်ပါ။</p>
+
+    <div class="demo" aria-label="Shortcut example">
+      <div class="bubble"><small>ပြောတာ</small>"ငါ့လိပ်စာ ကို ပို့ပေး"</div>
+      <div class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="bubble"><small>ဝင်လာတာ</small>အမှတ် ၁၂၊ ဗိုလ်ချုပ်လမ်း၊ ရန်ကုန် ကို ပို့ပေး</div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg></div>
+        <h3>🗣 Shortcut — အတိုပြော၊ အရှည်ထွက်</h3>
+        <p>စကားစု တိုတိုလေး ပြောလိုက်ရင် သတ်မှတ်ထားတဲ့ စာအရှည် ဝင်လာပါမယ်။ တစ်ခုတည်း ပြောရင်ရော၊ စာကြောင်းထဲ ညှပ်ပြောရင်ပါ ရပါတယ်။</p>
+        <div class="editor">
+          <div class="bar">ပြောမယ့်စာ  =&gt;  ဝင်လာမယ့်စာ</div>
+          <div class="row"><span class="say">ငါ့လိပ်စာ</span><span class="arrow">→</span><span class="out">အမှတ် ၁၂၊ ဗိုလ်ချုပ်လမ်း၊ ရန်ကုန်</span></div>
+          <div class="row"><span class="say">ငါ့ဖုန်း</span><span class="arrow">→</span><span class="out">09 123 456 789</span></div>
+          <div class="row"><span class="say">ဘဏ်အကောင့်</span><span class="arrow">→</span><span class="out">KBZ 1234 5678 9012 · Aung Aung</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+        <h3>✏️ စာလုံးပြင် — အမြဲမှားတာကို အမြဲမှန်</h3>
+        <p>နာမည်၊ ဆိုင်နာမည်၊ နည်းပညာ စကားလုံး လို AI က အမြဲ မှားရေးတာကို တစ်ခါ ပြင်ထားရင် နောက်ပိုင်း အလိုလို မှန်ပါမယ်။</p>
+        <div class="editor">
+          <div class="bar">မှားတာ  =&gt;  မှန်တာ</div>
+          <div class="row"><span class="say">မြန်မာဖလိုး</span><span class="arrow">→</span><span class="out">Myanmar Flow</span></div>
+          <div class="row"><span class="say">ကိုအောင်</span><span class="arrow">→</span><span class="out">ကိုအောင်ကျော်</span></div>
+          <div class="row"><span class="say">ဖေ့ဘွတ်ပေ့ချ်</span><span class="arrow">→</span><span class="out">Facebook Page</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="fine" style="text-align:left">💡 ထည့်ထားတဲ့ စကားလုံးတွေကို Google ကို "ဒီစကားလုံးတွေ ကြားရမယ်" လို့ ကြိုပြောထားလို့ အစကတည်းက ပိုမှန်လာပါတယ်။ Save နှိပ်တာနဲ့ ချက်ချင်း အလုပ်လုပ်ပြီး ကိုယ့်စက်ထဲမှာပဲ သိမ်းပါတယ်။</p>
+  </div>
+</section>
+
+<section class="tint" id="ways">
   <div class="wrap">
     <p class="eyebrow">သုံးနည်း နှစ်မျိုး</p>
     <h2>ကိုယ်ပိုင် Key နဲ့ အခမဲ့၊ ဒါမှမဟုတ် <em>Code</em> နဲ့ အလွယ်</h2>
@@ -329,7 +390,7 @@
   </div>
 </section>
 
-<section class="tint" id="pricing">
+<section id="pricing">
   <div class="wrap">
     <p class="eyebrow">Code ဈေးနှုန်း</p>
     <h2>များများဝယ်ရင် <em>ပိုတန်</em>တယ်</h2>
@@ -359,7 +420,7 @@
   </div>
 </section>
 
-<section id="guide">
+<section class="tint" id="guide">
   <div class="wrap">
     <p class="eyebrow">Code နဲ့ စသုံးနည်း</p>
     <h2>ဝယ်ပြီး <em>၅ မိနစ်</em>အတွင်း စသုံးလို့ရ</h2>
@@ -380,7 +441,7 @@
   </div>
 </section>
 
-<section class="tint" id="faq">
+<section id="faq">
   <div class="wrap">
     <p class="eyebrow">မေးလေ့ရှိတာတွေ</p>
     <h2>သိချင်တာ <em>ရှိသေးလား</em></h2>
