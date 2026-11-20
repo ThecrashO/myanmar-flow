@@ -38,7 +38,7 @@ npm run deploy
 
 ## Point the app at it
 
-Set `CODE_SERVER` in `myanmar_flow.py` to that address, then build and release. For a quick
+The app already points at `https://myanmar-flow.thecrasho.com` (set in `wrangler.toml` as a custom domain). If you move it, set `CODE_SERVER` in `myanmar_flow.py` to the new address, then build and release. For a quick
 test without a release, set the `MF_SERVER` environment variable before starting the app.
 
 Once a server is set, a user can paste a code in the setup wizard (in the same box as the key)

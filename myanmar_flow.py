@@ -50,7 +50,7 @@ GOOGLE_API = "https://generativelanguage.googleapis.com"
 LIVE_PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 # The owner's top-up server: people with a Myanmar Flow code use it instead of their own key.
 # It speaks the same paths as Google, so only the address and the login change.
-CODE_SERVER = os.environ.get("MF_SERVER", "")
+CODE_SERVER = os.environ.get("MF_SERVER", "https://myanmar-flow.thecrasho.com")
 SAMPLE_RATE = 16000
 UPDATE_API = "https://api.github.com/repos/ThecrashO/myanmar-flow/releases/latest"
 MAX_RECORD_SECONDS = 300
