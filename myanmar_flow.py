@@ -1,10 +1,10 @@
 """Myanmar Flow - hold a hotkey, speak Burmese, release, and the text is pasted
-into whatever app has focus. Runs in the system tray; uses Google Gemini for
-transcription."""
+into whatever app has focus. Runs in the system tray (menu bar on macOS); uses
+Google Gemini for transcription. Platform-specific parts live in platform_win.py
+and platform_mac.py."""
 
 import base64
 import contextlib
-import ctypes
 import io
 import json
 import logging
@@ -19,27 +19,29 @@ import tkinter as tk
 import unicodedata
 import wave
 import webbrowser
-import winreg
-import winsound
 from collections import deque
-from ctypes import wintypes
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from tkinter import ttk
 
-import keyboard
 import numpy as np
-import pyperclip
 import pystray
 import requests
 import sounddevice as sd
 import websocket
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, features
 
+IS_MAC = sys.platform == "darwin"
+if IS_MAC:
+    import platform_mac as plat
+else:
+    import platform_win as plat
+
 APP_NAME = "Myanmar Flow"
 APP_VERSION = "1.3.2"
 REPO_URL = "https://github.com/ThecrashO/myanmar-flow"
-DATA_DIR = Path(os.environ.get("APPDATA", Path.home())) / "MyanmarFlow"
+DATA_DIR = (Path.home() / "Library" / "Application Support" / "MyanmarFlow" if IS_MAC
+            else Path(os.environ.get("APPDATA", Path.home())) / "MyanmarFlow")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CONFIG_PATH = DATA_DIR / "config.json"
 STATS_PATH = DATA_DIR / "stats.json"
@@ -47,9 +49,15 @@ LOG_PATH = DATA_DIR / "myanmar_flow.log"
 LIVE_URL = ("wss://generativelanguage.googleapis.com/ws/"
             "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent")
 SAMPLE_RATE = 16000
-RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 UPDATE_API = "https://api.github.com/repos/ThecrashO/myanmar-flow/releases/latest"
 MAX_RECORD_SECONDS = 300
+PASTE_KEYS = "⌘V" if IS_MAC else "Ctrl+V"
+UI_FONT = "Helvetica Neue" if IS_MAC else "Segoe UI"
+OS_NAME = "Mac" if IS_MAC else "Windows"
+MIC_SETTINGS = ("System Settings → Privacy & Security → Microphone" if IS_MAC
+                else "Windows Settings → Privacy → Microphone")
+TRAY_HINT = ("Menu bar ပေါ်က 🟢 icon ကိုနှိပ်ရင် ဖွင့်/ပိတ်၊ Settings နဲ့ အကူအညီ ရှိပါတယ်။" if IS_MAC
+             else "နာရီဘေးက 🟢 icon ကိုနှိပ်ရင် ဖွင့်/ပိတ် လုပ်လို့ရပါတယ်။ Right-click နှိပ်ရင် Settings နဲ့ အကူအညီ ရှိပါတယ်။")
 
 
 def scrub_old_log():
@@ -84,9 +92,9 @@ DEFAULT_CONFIG = {
     "replacements": {},
     # For the "time saved" estimate.
     "typing_chars_per_minute": 90,
-    "hotkey": "right ctrl",
+    "hotkey": "right option" if IS_MAC else "right ctrl",  # Macs have no right Ctrl
     # Speak Burmese, get English text.
-    "translate_hotkey": "right alt",
+    "translate_hotkey": "right command" if IS_MAC else "right alt",
     "min_seconds": 0.4,
     "sounds": True,
     # Second pass with a text model to fix misheard words, spelling and punctuation.
@@ -563,48 +571,23 @@ def check_api_key(api_key):
 
 def paste_text(text, keep=True):
     """Paste via the clipboard (reliable for Myanmar script). With keep=False the old
-    clipboard is restored afterwards; otherwise the text stays there for Ctrl+V."""
+    clipboard is restored afterwards; otherwise the text stays there for Ctrl+V / ⌘V."""
     previous = None
     if not keep:
         try:
-            previous = pyperclip.paste()
+            previous = plat.clipboard_text()
         except Exception:
             pass
-    pyperclip.copy(text)
+    plat.copy_text(text)
     time.sleep(0.05)
-    keyboard.send("ctrl+v")
+    plat.send_paste()
     if previous is not None:
         time.sleep(0.3)
-        pyperclip.copy(previous)
+        plat.copy_text(previous)
 
 
-# ---------------------------------------------------------------- start with Windows
-
-def launch_command():
-    if getattr(sys, "frozen", False):
-        return f'"{sys.executable}"'
-    pythonw = Path(sys.executable).with_name("pythonw.exe")
-    return f'"{pythonw}" "{Path(__file__).resolve()}"'
-
-
-def autostart_enabled():
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
-            winreg.QueryValueEx(key, APP_NAME)
-            return True
-    except OSError:
-        return False
-
-
-def set_autostart(enabled):
-    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
-        if enabled:
-            winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, launch_command())
-        else:
-            try:
-                winreg.DeleteValue(key, APP_NAME)
-            except OSError:
-                pass
+autostart_enabled = plat.autostart_enabled
+set_autostart = plat.set_autostart
 
 
 # ---------------------------------------------------------------- icons
@@ -633,81 +616,9 @@ def make_icon(color, size=64):
 
 # ---------------------------------------------------------------- floating indicator
 
-WS_POPUP = 0x80000000
-WS_EX_LAYERED = 0x00080000
-WS_EX_TRANSPARENT = 0x00000020
-WS_EX_TOOLWINDOW = 0x00000080
-WS_EX_NOACTIVATE = 0x08000000
-WS_EX_TOPMOST = 0x00000008
-
-user32 = ctypes.windll.user32
-gdi32 = ctypes.windll.gdi32
-user32.CreateWindowExW.restype = wintypes.HWND
-user32.CreateWindowExW.argtypes = [wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
-                                   ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-                                   wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID]
-user32.GetDC.restype = wintypes.HDC
-user32.GetDC.argtypes = [wintypes.HWND]
-user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
-user32.GetForegroundWindow.restype = wintypes.HWND
-user32.MonitorFromWindow.restype = wintypes.HMONITOR
-user32.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
-user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
-user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
-                                ctypes.c_int, ctypes.c_int, wintypes.UINT]
-user32.UpdateLayeredWindow.argtypes = [wintypes.HWND, wintypes.HDC, ctypes.c_void_p, ctypes.c_void_p,
-                                       wintypes.HDC, ctypes.c_void_p, wintypes.COLORREF, ctypes.c_void_p,
-                                       wintypes.DWORD]
-gdi32.CreateCompatibleDC.restype = wintypes.HDC
-gdi32.CreateCompatibleDC.argtypes = [wintypes.HDC]
-gdi32.CreateDIBSection.restype = wintypes.HBITMAP
-gdi32.CreateDIBSection.argtypes = [wintypes.HDC, ctypes.c_void_p, wintypes.UINT,
-                                   ctypes.POINTER(ctypes.c_void_p), wintypes.HANDLE, wintypes.DWORD]
-gdi32.SelectObject.restype = wintypes.HGDIOBJ
-gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HGDIOBJ]
-gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
-gdi32.DeleteDC.argtypes = [wintypes.HDC]
-try:
-    user32.SetThreadDpiAwarenessContext.restype = ctypes.c_void_p
-    user32.SetThreadDpiAwarenessContext.argtypes = [ctypes.c_void_p]
-except AttributeError:  # Windows older than 10 1607
-    pass
-
-
-class BITMAPINFOHEADER(ctypes.Structure):
-    _fields_ = [("biSize", wintypes.DWORD), ("biWidth", wintypes.LONG), ("biHeight", wintypes.LONG),
-                ("biPlanes", wintypes.WORD), ("biBitCount", wintypes.WORD), ("biCompression", wintypes.DWORD),
-                ("biSizeImage", wintypes.DWORD), ("biXPelsPerMeter", wintypes.LONG),
-                ("biYPelsPerMeter", wintypes.LONG), ("biClrUsed", wintypes.DWORD), ("biClrImportant", wintypes.DWORD)]
-
-
-class BLENDFUNCTION(ctypes.Structure):
-    _fields_ = [("BlendOp", ctypes.c_ubyte), ("BlendFlags", ctypes.c_ubyte),
-                ("SourceConstantAlpha", ctypes.c_ubyte), ("AlphaFormat", ctypes.c_ubyte)]
-
-
-class MONITORINFO(ctypes.Structure):
-    _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT),
-                ("rcWork", wintypes.RECT), ("dwFlags", wintypes.DWORD)]
-
-
-@contextlib.contextmanager
-def dpi_aware():
-    """Talk to Win32 in real pixels so the overlay is crisp on scaled displays."""
-    old = None
-    try:
-        old = user32.SetThreadDpiAwarenessContext(ctypes.c_void_p(-4))  # per-monitor v2
-    except AttributeError:
-        pass
-    try:
-        yield
-    finally:
-        if old:
-            user32.SetThreadDpiAwarenessContext(ctypes.c_void_p(old))
-
-
-FONTS_DIR = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
 HAS_RAQM = features.check("raqm")  # complex-script shaping, needed to draw Burmese
+# Without raqm (Pillow's macOS wheels), macOS draws Burmese with its own text engine.
+CAN_SHAPE = HAS_RAQM or hasattr(plat, "render_text")
 SUPERSAMPLE = 3
 BARS = 21
 PILL_BG = (20, 20, 23)
@@ -730,9 +641,9 @@ class Indicator:
     """Wispr-style pill at the top centre of the screen: live waveform and timer
     while recording, a spinner while transcribing, a check when done.
 
-    Drawn with Pillow (anti-aliased, soft shadow) into a per-pixel-alpha layered
-    window that is click-through and never takes focus, so the paste still goes
-    to the user's app."""
+    Drawn with Pillow (anti-aliased, soft shadow) and shown in a click-through
+    window that never takes focus (plat.Overlay), so the paste still goes to the
+    user's app."""
 
     H = 40        # pill height, logical px
     MARGIN = 14   # room around the pill for the shadow
@@ -750,16 +661,13 @@ class Indicator:
         self.started = 0.0
         self.smoothed = 0.0
         self.levels = deque([0.0] * BARS, maxlen=BARS)
-        self.visible = False
-        self.anchor = (0, 0, 1.0)  # centre x, top y (physical px), scale
+        self.anchor = (0, 0, 1.0)  # centre x, top y, scale
         self.bases = {}
         self.fonts = {}
+        self.text_cache = {}
         self.live_text = ""
         self.bubble_cache = (None, None)
-        with dpi_aware():
-            self.hwnd = user32.CreateWindowExW(
-                WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST,
-                "STATIC", None, WS_POPUP, 0, 0, 1, 1, None, None, None, None)
+        self.overlay = plat.Overlay()
         self.root.after(30, self.tick)
 
     # --- state
@@ -791,21 +699,9 @@ class Indicator:
             self.live_text = text
 
     def locate(self):
-        """Top centre of the work area of the monitor the user is typing on, where it
-        doesn't cover the message box chat apps keep at the bottom."""
-        with dpi_aware():
-            mon = user32.MonitorFromWindow(user32.GetForegroundWindow(), 2)  # MONITOR_DEFAULTTONEAREST
-            info = MONITORINFO()
-            info.cbSize = ctypes.sizeof(MONITORINFO)
-            user32.GetMonitorInfoW(mon, ctypes.byref(info))
-            dpi_x, dpi_y = ctypes.c_uint(96), ctypes.c_uint(96)
-            try:
-                ctypes.windll.shcore.GetDpiForMonitor(mon, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
-            except (AttributeError, OSError):
-                pass
-        scale = dpi_x.value / 96
-        r = info.rcWork
-        self.anchor = ((r.left + r.right) // 2, r.top, scale)
+        """Top centre of the screen the user is typing on, where the pill doesn't
+        cover the message box chat apps keep at the bottom."""
+        self.anchor = self.overlay.locate()
 
     # --- animation loop (Tk thread)
 
@@ -820,13 +716,11 @@ class Indicator:
         if abs(self.target - self.alpha) < 0.02:
             self.alpha = self.target
         if self.alpha <= 0.0:
-            if self.visible:
-                user32.ShowWindow(self.hwnd, 0)  # SW_HIDE
-                self.visible = False
+            self.overlay.hide()
             self.root.after(80, self.tick)
             return
         try:
-            self.present(self.compose(now, self.anchor[2]))
+            self.overlay.present(self.compose(now, self.anchor[2]), self.anchor, self.alpha)
         except Exception:
             log.exception("indicator")
         self.root.after(25, self.tick)
@@ -838,15 +732,38 @@ class Indicator:
         if key not in self.fonts:
             engine = ImageFont.Layout.RAQM if HAS_RAQM else ImageFont.Layout.BASIC
             try:
-                self.fonts[key] = ImageFont.truetype(str(FONTS_DIR / name), max(1, int(size * k)), layout_engine=engine)
+                self.fonts[key] = ImageFont.truetype(str(plat.font_path(name)), max(1, int(size * k)), layout_engine=engine)
             except OSError:
                 self.fonts[key] = ImageFont.load_default(max(1, int(size * k)))
         return self.fonts[key]
 
+    def text_image(self, text, size, k):
+        """Burmese text rendered by the OS (macOS), white on transparent, cached."""
+        key = (text, size, k)
+        if key not in self.text_cache:
+            if len(self.text_cache) > 64:
+                self.text_cache.clear()
+            self.text_cache[key] = plat.render_text(text, size * k, WHITE)
+        return self.text_cache[key]
+
+    def measure(self, text, size, k):
+        """Width of Burmese text in supersampled pixels (0 if it can't be drawn)."""
+        if HAS_RAQM:
+            return self.font("mmrtext.ttf", size, k).getlength(text)
+        return self.text_image(text, size, k).width if CAN_SHAPE else 0
+
+    def put_text(self, img, x, cy, text, size, k):
+        """Draw Burmese text with its left edge at x, centred on cy."""
+        if HAS_RAQM:
+            ImageDraw.Draw(img).text((x, cy), text, font=self.font("mmrtext.ttf", size, k),
+                                     fill=WHITE + (255,), anchor="lm")
+        elif CAN_SHAPE:
+            t = self.text_image(text, size, k)
+            img.alpha_composite(t, (int(x), int(cy - t.height / 2)))
+
     def width(self, k):
         if self.mode == "error" or (self.mode == "done" and self.text):
-            text_w = self.font("mmrtext.ttf", 13, k).getlength(self.text) / k if HAS_RAQM else 0
-            return int(52 + text_w + 18)
+            return int(52 + self.measure(self.text, 13, k) / k + 18)
         return 204
 
     def base(self, w, k):
@@ -907,18 +824,16 @@ class Indicator:
             d.line([(at(16), cy), (at(19), cy + 3 * k), (at(24.5), cy - 3.5 * k)],
                    fill=WHITE + (255,), width=max(1, int(2.2 * k)), joint="curve")
             if self.text:
-                if HAS_RAQM:
-                    d.text((at(38), cy), self.text, font=self.font("mmrtext.ttf", 13, k), fill=WHITE + (255,), anchor="lm")
+                self.put_text(img, at(38), cy, self.text, 13, k)
             else:
                 fade = max(0.0, 1 - t / 0.3)
                 bars([3 + 4 * fade] * BARS, mix(DIM, PILL_BG, 0.7))
         elif self.mode == "error":
             d.ellipse((at(20 - 8), cy - 8 * k, at(20 + 8), cy + 8 * k), fill=RED + (255,))
             d.text((at(20), cy), "!", font=self.font("segoeuib.ttf", 12, k), fill=WHITE + (255,), anchor="mm")
-            if HAS_RAQM:
-                d.text((at(38), cy), self.text, font=self.font("mmrtext.ttf", 13, k), fill=WHITE + (255,), anchor="lm")
+            self.put_text(img, at(38), cy, self.text, 13, k)
 
-        if self.live_text and HAS_RAQM and self.mode in ("recording", "transcribing"):
+        if self.live_text and CAN_SHAPE and self.mode in ("recording", "transcribing"):
             img = self.with_bubble(img, k)
         final = (round(img.width / SUPERSAMPLE), round(img.height / SUPERSAMPLE))
         return img.resize(final, Image.LANCZOS)
@@ -930,24 +845,23 @@ class Indicator:
         """The live transcript in a dark bubble: the newest words that fit on one line."""
         if self.bubble_cache[0] == (self.live_text, k):
             return self.bubble_cache[1]
-        font = self.font("mmrtext.ttf", 14, k)
         limit = (self.BUBBLE_MAX_W - 36) * k
         text, words = self.live_text, self.live_text.split()
-        while len(words) > 1 and font.getlength(text) > limit:
+        while len(words) > 1 and self.measure(text, 14, k) > limit:
             words = words[1:]
             text = "… " + " ".join(words)
-        while font.getlength(text) > limit and len(text) > 3:  # one very long word
+        while self.measure(text, 14, k) > limit and len(text) > 3:  # one very long word
             text = text[2:]
             while text and unicodedata.category(text[0]) in ("Mn", "Mc"):  # don't start mid-syllable
                 text = text[1:]
             text = "…" + text
-        w, h = font.getlength(text) / k + 36, self.BUBBLE_H
+        w, h = self.measure(text, 14, k) / k + 36, self.BUBBLE_H
         img = Image.new("RGBA", (int((w + 4) * k), int((h + 6) * k)), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         d.rounded_rectangle((2 * k, 4 * k, (w + 2) * k, (h + 4) * k), radius=12 * k, fill=(0, 0, 0, 70))
         d.rounded_rectangle((2 * k, 2 * k, (w + 2) * k, (h + 2) * k), radius=12 * k, fill=PILL_BORDER + (255,))
         d.rounded_rectangle((3 * k, 3 * k, (w + 1) * k, (h + 1) * k), radius=11 * k, fill=(30, 30, 34, 255))
-        d.text((20 * k, (2 + h / 2) * k), text, font=font, fill=WHITE + (255,), anchor="lm")
+        self.put_text(img, 20 * k, (2 + h / 2) * k, text, 14, k)
         self.bubble_cache = ((self.live_text, k), img)
         return img
 
@@ -960,41 +874,6 @@ class Indicator:
         canvas.alpha_composite(bubble, ((canvas.width - bubble.width) // 2, pill.height - int(self.MARGIN * k) + gap))
         return canvas
 
-    def present(self, img):
-        """Push a premultiplied BGRA bitmap to the layered window (UpdateLayeredWindow)."""
-        cx, top, scale = self.anchor
-        w, h = img.size
-        x = cx - w // 2
-        y = top - int((1 - self.alpha) * 10 * scale)  # slight drop while fading in
-        rgba = np.asarray(img, dtype=np.uint16)
-        a = rgba[..., 3]
-        bgra = np.dstack([rgba[..., 2] * a // 255, rgba[..., 1] * a // 255, rgba[..., 0] * a // 255, a])
-        data = np.ascontiguousarray(bgra, dtype=np.uint8).tobytes()
-
-        header = BITMAPINFOHEADER(biSize=ctypes.sizeof(BITMAPINFOHEADER), biWidth=w, biHeight=-h,
-                                  biPlanes=1, biBitCount=32, biCompression=0)
-        with dpi_aware():
-            screen = user32.GetDC(None)
-            mem = gdi32.CreateCompatibleDC(screen)
-            bits = ctypes.c_void_p()
-            bmp = gdi32.CreateDIBSection(mem, ctypes.byref(header), 0, ctypes.byref(bits), None, 0)
-            ctypes.memmove(bits, data, len(data))
-            old = gdi32.SelectObject(mem, bmp)
-            blend = BLENDFUNCTION(0, 0, int(255 * self.alpha), 1)  # AC_SRC_OVER, AC_SRC_ALPHA
-            user32.UpdateLayeredWindow(self.hwnd, screen, ctypes.byref(wintypes.POINT(x, y)),
-                                       ctypes.byref(wintypes.SIZE(w, h)), mem,
-                                       ctypes.byref(wintypes.POINT(0, 0)), 0, ctypes.byref(blend), 2)  # ULW_ALPHA
-            if not self.visible:
-                user32.ShowWindow(self.hwnd, 4)  # SW_SHOWNOACTIVATE
-                user32.SetWindowPos(self.hwnd, wintypes.HWND(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
-                self.visible = True
-            gdi32.SelectObject(mem, old)
-            gdi32.DeleteObject(bmp)
-            gdi32.DeleteDC(mem)
-            user32.ReleaseDC(None, screen)
-
-
-# ---------------------------------------------------------------- settings window
 
 class SettingsWindow:
     def __init__(self, app):
@@ -1047,9 +926,9 @@ class SettingsWindow:
         checks = [
             ("⚡ ပြောနေတုန်း စာကို တန်းပြမယ် (Live — စောင့်ချိန် နည်း)", self.live),
             ("AI နဲ့ စာပြင်ပေးမယ် (ပိုတိကျ၊ ၁-၃ စက္ကန့် ပိုကြာ)", self.polish),
-            ("စာကို Copy ကူးထားမယ် (cursor မချမိရင် Ctrl+V နဲ့ ထည့်လို့ရ)", self.keep_clip),
+            (f"စာကို Copy ကူးထားမယ် (cursor မချမိရင် {PASTE_KEYS} နဲ့ ထည့်လို့ရ)", self.keep_clip),
             ("Beep sounds", self.sounds),
-            ("Windows စဖွင့်ရင် အလိုလိုဖွင့်မယ်", self.autostart),
+            (f"{OS_NAME} စဖွင့်ရင် အလိုလိုဖွင့်မယ်", self.autostart),
             ("Version အသစ်ထွက်ရင် အသိပေးမယ်", self.check_updates),
         ]
         for i, (label, var) in enumerate(checks):
@@ -1084,9 +963,7 @@ class SettingsWindow:
         cfg["keep_in_clipboard"] = self.keep_clip.get()
         cfg["live"] = self.live.get()
         for key in filter(None, (cfg["hotkey"], cfg["translate_hotkey"])):
-            try:
-                keyboard.key_to_scan_codes(key)
-            except Exception:
+            if not plat.valid_hotkey(key):
                 tk.messagebox.showerror(APP_NAME, f"Hotkey '{key}' ကို မသိပါ။", parent=self.win)
                 return
         if cfg["hotkey"].lower() == cfg["translate_hotkey"].lower():
@@ -1124,9 +1001,9 @@ class WordsWindow:
         frm.pack(fill="both", expand=True)
 
         def section(title, hint, content):
-            ttk.Label(frm, text=title, font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=(6, 0))
+            ttk.Label(frm, text=title, font=(UI_FONT, 12, "bold")).pack(anchor="w", pady=(6, 0))
             ttk.Label(frm, text=hint, foreground="#6b7280", wraplength=560, justify="left").pack(anchor="w", pady=(0, 4))
-            box = tk.Text(frm, width=70, height=7, wrap="none", font=("Segoe UI", 11), undo=True)
+            box = tk.Text(frm, width=70, height=7, wrap="none", font=(UI_FONT, 11), undo=True)
             box.insert("1.0", content)
             box.pack(fill="both", expand=True)
             return box
@@ -1182,7 +1059,7 @@ class DashboardWindow:
 
     def label(self, parent, text, size=11, bold=False, color=None, **kw):
         return tk.Label(parent, text=text, bg=parent["bg"], fg=color or self.INK,
-                        font=("Segoe UI", size, "bold" if bold else "normal"), **kw)
+                        font=(UI_FONT, size, "bold" if bold else "normal"), **kw)
 
     def render(self):
         for child in self.body.winfo_children():
@@ -1215,7 +1092,7 @@ class DashboardWindow:
         self.label(self.body, "🕘  မကြာခင်က ပြောခဲ့တဲ့စာ", size=12, bold=True).pack(anchor="w", pady=(18, 4))
         history = list(self.app.history)[::-1]
         if history:
-            self.list = tk.Listbox(self.body, height=min(8, len(history)), font=("Segoe UI", 11),
+            self.list = tk.Listbox(self.body, height=min(8, len(history)), font=(UI_FONT, 11),
                                    activestyle="none", relief="flat", highlightthickness=1,
                                    highlightbackground="#e5e7eb", selectbackground="#dbeafe", selectforeground=self.INK)
             for when, text in history:
@@ -1239,7 +1116,7 @@ class DashboardWindow:
         if not self.list or not self.list.curselection():
             return
         text = list(self.app.history)[::-1][self.list.curselection()[0]][1]
-        pyperclip.copy(text)
+        plat.copy_text(text)
         self.win.title(f"{APP_NAME} - Copy ကူးပြီးပါပြီ ✓")
         self.win.after(1500, lambda: self.win.winfo_exists() and self.win.title(f"{APP_NAME} - Dashboard"))
 
@@ -1302,7 +1179,7 @@ class SetupWizard:
         ttk.Label(self.body, text=f"အဆင့် {step} / 3", foreground="#6b7280").pack(anchor="w")
 
     def title(self, text):
-        ttk.Label(self.body, text=text, font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(4, 10))
+        ttk.Label(self.body, text=text, font=(UI_FONT, 15, "bold")).pack(anchor="w", pady=(4, 10))
 
     def para(self, text, **kw):
         label = ttk.Label(self.body, text=text, wraplength=490, justify="left", **kw)
@@ -1362,7 +1239,7 @@ class SetupWizard:
         self.para("\"စပြောမယ်\" ကိုနှိပ်ပြီး \"မင်္ဂလာပါ\" လို့ ပြောကြည့်ပါ။ ပြီးရင် \"ရပ်မယ်\" ကိုနှိပ်ပါ။")
         self.mic_btn = ttk.Button(self.body, text="🎙  စပြောမယ်", command=self.toggle_mic)
         self.mic_btn.pack(anchor="w", pady=10)
-        self.mic_result = self.para("", font=("Segoe UI", 12))
+        self.mic_result = self.para("", font=(UI_FONT, 12))
         ttk.Button(self.footer, text="ရှေ့ဆက်မယ် →", command=self.step_done).pack(side="right")
         ttk.Button(self.footer, text="ကျော်မယ်", command=self.step_done).pack(side="right", padx=6)
 
@@ -1372,7 +1249,7 @@ class SetupWizard:
                 self.recorder.start()
             except Exception as e:
                 log.error("Mic test: %s", e)
-                self.mic_result.configure(text="❌ Mic ကို ဖွင့်လို့မရပါ။ Windows Settings → Privacy → Microphone ကို စစ်ပါ",
+                self.mic_result.configure(text=f"❌ Mic ကို ဖွင့်လို့မရပါ။ {MIC_SETTINGS} ကို စစ်ပါ",
                                           foreground="#e5484d")
                 return
             self.recording = True
@@ -1416,10 +1293,9 @@ class SetupWizard:
         if self.cfg["translate_hotkey"]:
             tips.append(f"🌐 [{self.cfg['translate_hotkey']}] ကိုဖိပြီး မြန်မာလိုပြောရင် English လို ရိုက်ပေးပါမယ်။")
         self.para("\n".join(tips))
-        self.para("နာရီဘေးက 🟢 icon ကိုနှိပ်ရင် ဖွင့်/ပိတ် လုပ်လို့ရပါတယ်။ Right-click နှိပ်ရင် Settings နဲ့ အကူအညီ ရှိပါတယ်။",
-                  foreground="#6b7280")
+        self.para(TRAY_HINT, foreground="#6b7280")
         self.autostart = tk.BooleanVar(value=True)
-        ttk.Checkbutton(self.body, text="Windows စဖွင့်ရင် အလိုလိုဖွင့်မယ်", variable=self.autostart).pack(anchor="w", pady=8)
+        ttk.Checkbutton(self.body, text=f"{OS_NAME} စဖွင့်ရင် အလိုလိုဖွင့်မယ်", variable=self.autostart).pack(anchor="w", pady=8)
         ttk.Button(self.footer, text="ပြီးပါပြီ ✓", command=self.finish).pack(side="right")
 
     def finish(self):
@@ -1437,13 +1313,6 @@ class SetupWizard:
 
 
 # ---------------------------------------------------------------- app
-
-def mask_alt_menu():
-    """Tap an unassigned key (vk 0xE8) while Alt is down, so releasing Alt doesn't
-    open the focused app's menu bar and swallow the paste."""
-    user32.keybd_event(0xE8, 0, 0, 0)
-    user32.keybd_event(0xE8, 0, 2, 0)  # KEYEVENTF_KEYUP
-
 
 def version_tuple(tag):
     return tuple(int(n) for n in re.findall(r"\d+", tag)[:3])
@@ -1465,8 +1334,7 @@ class App:
         self.lock = threading.RLock()
         self.latest = None         # (tag, url) of a newer release
         self.ui = queue.Queue()
-        self.hook = None
-        self.hotkeys = {}
+        self.hotkeys = plat.HotkeyListener(self.on_press, self.on_release, self.on_other_key)
         self.settings = None
         self.wizard = None
         self.words = None
@@ -1494,7 +1362,7 @@ class App:
             pystray.MenuItem("Setup wizard...", lambda: self.ui.put(("wizard",))),
             pystray.MenuItem("အကူအညီ (Help)", lambda: webbrowser.open(f"{REPO_URL}#readme")),
             pystray.MenuItem("ပြဿနာတင်ပြရန် (Report a problem)", lambda: webbrowser.open(f"{REPO_URL}/issues")),
-            pystray.MenuItem("Log ဖိုင်ဖွင့်ရန်", lambda: os.startfile(LOG_PATH)),
+            pystray.MenuItem("Log ဖိုင်ဖွင့်ရန်", lambda: plat.open_file(LOG_PATH)),
             pystray.MenuItem(f"Version {APP_VERSION}", None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", self.quit),
@@ -1502,7 +1370,7 @@ class App:
 
     def history_items(self):
         def copier(text):
-            return lambda: pyperclip.copy(text)
+            return lambda: plat.copy_text(text)
         for when, text in reversed(self.history):
             yield pystray.MenuItem(f"{when:%H:%M}  {preview(text, 40)}", copier(text))
 
@@ -1511,20 +1379,39 @@ class App:
     def set_state(self, state, text=None):
         """state: idle | off | recording | transcribing | done; text = message to show."""
         tray_state = "idle" if state == "done" else state
-        self.tray.icon = self.icons[tray_state]
         hotkey = self.cfg["hotkey"]
-        self.tray.title = {
+        title = {
             "idle": f"{APP_NAME} - On  ([{hotkey}] ဖိပြီးပြောပါ)",
             "off": f"{APP_NAME} - Off",
             "recording": f"{APP_NAME} - Recording...",
             "transcribing": f"{APP_NAME} - Transcribing...",
         }[tray_state]
+
+        def update_tray():
+            self.tray.icon = self.icons[tray_state]
+            self.tray.title = title
+        self.on_ui(update_tray)
         flags = {"translate": self.mode == "translate", "locked": self.locked}
         self.ui.put(("indicator", state, text, flags))
 
+    def on_ui(self, func):
+        """Run func on the UI (main) thread: on macOS, AppKit must only be touched there."""
+        self.ui.put(("call", func))
+
+    def update_menu(self):
+        self.on_ui(self.tray.update_menu)
+
+    def notify(self, message):
+        def show():
+            try:
+                self.tray.notify(message, APP_NAME)
+            except Exception as e:
+                log.info("notify: %s", e)
+        self.on_ui(show)
+
     def beep(self, freq, ms):
         if self.cfg["sounds"]:
-            threading.Thread(target=winsound.Beep, args=(freq, ms), daemon=True).start()
+            threading.Thread(target=plat.beep, args=(freq, ms), daemon=True).start()
 
     def toggle_enabled(self, *_):
         self.enabled = not self.enabled
@@ -1536,7 +1423,7 @@ class App:
                     self.live.cancel()
                     self.live = None
         self.set_state("idle" if self.enabled else "off")
-        self.tray.update_menu()
+        self.update_menu()
 
     def apply_config(self, cfg):
         self.cfg = cfg
@@ -1544,33 +1431,26 @@ class App:
         self.set_state("idle" if self.enabled else "off")
 
     def bind_hotkey(self):
-        # One global hook: keyboard.on_press_key/on_release_key share an internal
-        # entry per key, so unhooking both raises KeyError.
-        if self.hook:
-            keyboard.unhook(self.hook)
-        self.hotkeys = {}
-        for mode, key in (("dictate", self.cfg["hotkey"]), ("translate", self.cfg["translate_hotkey"])):
-            try:
-                if key:
-                    self.hotkeys[key.lower()] = (mode, set(keyboard.key_to_scan_codes(key)))
-            except ValueError:
+        keys = [("dictate", self.cfg["hotkey"]), ("translate", self.cfg["translate_hotkey"])]
+        for _, key in keys:
+            if key and not plat.valid_hotkey(key):
                 log.warning("Unknown hotkey %r", key)
-        self.hook = keyboard.hook(self.on_key)
+        self.hotkeys.bind(keys)
 
     # --- hotkey handlers (keyboard hook thread)
 
-    def on_key(self, event):
-        # Match by name too: "right ctrl" shares scan code 29 with left ctrl.
-        name = (event.name or "").lower()
-        match = self.hotkeys.get(name)
-        if not match or event.scan_code not in match[1]:
-            return
-        if event.event_type == keyboard.KEY_DOWN:
-            if "alt" in name:
-                mask_alt_menu()
-            self.on_press(match[0])
-        else:
-            self.on_release(match[0])
+    def on_other_key(self):
+        """Another key went down (macOS only). Right after the hotkey, that means a
+        shortcut like ⌘C or Option+letter, not dictation: cancel quietly."""
+        with self.lock:
+            if self.recording and self.held and not self.locked and time.time() - self.started_at < 1.0:
+                self.recording = self.held = False
+                self.ignore_release = True
+                self.recorder.stop()
+                if self.live:
+                    self.live.cancel()
+                    self.live = None
+                self.set_state("idle")
 
     def on_press(self, mode):
         with self.lock:
@@ -1684,13 +1564,13 @@ class App:
             paste_text(text, keep=self.cfg["keep_in_clipboard"])
             self.stats.add(len(text), len(audio) / SAMPLE_RATE)
             self.history.append((datetime.now(), text))
-            self.tray.update_menu()
+            self.update_menu()
         if not self.enabled:
             self.set_state("off")
         elif note:
             self.set_state("idle", note)
         elif text and self.cfg["keep_in_clipboard"]:
-            self.set_state("done", "Copy ကူးထားပြီး — Ctrl+V နဲ့လည်း ထည့်လို့ရ")
+            self.set_state("done", f"Copy ကူးထားပြီး — {PASTE_KEYS} နဲ့လည်း ထည့်လို့ရ")
         else:
             self.set_state("done" if text else "idle")
 
@@ -1713,8 +1593,8 @@ class App:
             return
         if version_tuple(tag) > version_tuple(APP_VERSION) and (not self.latest or self.latest[0] != tag):
             self.latest = (tag, release.get("html_url") or f"{REPO_URL}/releases/latest")
-            self.tray.update_menu()
-            self.tray.notify(f"Version {tag.lstrip('v')} ထွက်ပါပြီ။ Tray icon → Version အသစ် ရယူရန် ကိုနှိပ်ပါ။", APP_NAME)
+            self.update_menu()
+            self.notify(f"Version {tag.lstrip('v')} ထွက်ပါပြီ။ {APP_NAME} icon → Version အသစ် ရယူရန် ကိုနှိပ်ပါ။")
 
     # --- UI thread
 
@@ -1722,7 +1602,9 @@ class App:
         try:
             while True:
                 msg = self.ui.get_nowait()
-                if msg[0] == "indicator":
+                if msg[0] == "call":
+                    msg[1]()
+                elif msg[0] == "indicator":
                     self.indicator.set_state(msg[1], msg[2], **msg[3])
                 elif msg[0] == "live":
                     self.indicator.set_live(msg[1])
@@ -1742,6 +1624,7 @@ class App:
         self.root.after(50, self.pump_ui)
 
     def open_settings(self):
+        plat.bring_to_front()
         if self.settings and self.settings.win.winfo_exists():
             self.settings.win.lift()
             self.settings.win.focus_force()
@@ -1749,6 +1632,7 @@ class App:
         self.settings = SettingsWindow(self)
 
     def open_wizard(self):
+        plat.bring_to_front()
         if self.wizard and self.wizard.win.winfo_exists():
             self.wizard.win.lift()
             self.wizard.win.focus_force()
@@ -1756,6 +1640,7 @@ class App:
         self.wizard = SetupWizard(self)
 
     def open_window(self, current, cls):
+        plat.bring_to_front()
         if current and current.win.winfo_exists():
             current.win.lift()
             current.win.focus_force()
@@ -1763,34 +1648,45 @@ class App:
         return cls(self)
 
     def quit(self, *_):
-        self.tray.stop()
-        keyboard.unhook_all()
+        self.hotkeys.stop()
+        if IS_MAC:
+            self.tray.visible = False
+        else:
+            self.tray.stop()
         self.ui.put(("quit",))
 
     def run(self):
         self.bind_hotkey()
-        self.tray.run_detached()
+        if IS_MAC:
+            # Tk already runs the Cocoa event loop on the main thread; the menu-bar icon
+            # joins it, shown from this (main) thread rather than pystray's setup thread.
+            plat.hide_dock_icon()
+            self.tray.run_detached(setup=lambda icon: None)
+            self.tray.visible = True
+        else:
+            self.tray.run_detached()
         self.set_state("idle")
+        if not plat.has_accessibility(prompt=True):
+            # macOS shows its own dialog; hotkeys and paste work once it's allowed.
+            log.warning("Accessibility permission not granted yet")
+            self.set_state("idle", "System Settings မှာ Accessibility ခွင့်ပြုပေးပါ")
         if not self.cfg["api_key"]:
             self.ui.put(("wizard",))
         else:
-            self.tray.notify(f"[{self.cfg['hotkey']}] ကို ဖိထားပြီး ပြောပါ။", APP_NAME)
+            self.notify(f"[{self.cfg['hotkey']}] ကို ဖိထားပြီး ပြောပါ။")
         threading.Thread(target=self.update_loop, daemon=True).start()
         self.root.after(50, self.pump_ui)
         self.root.mainloop()
 
 
-def already_running():
-    ctypes.windll.kernel32.CreateMutexW(None, False, "MyanmarFlowSingleInstance")
-    return ctypes.windll.kernel32.GetLastError() == 183  # ERROR_ALREADY_EXISTS
-
-
 def main():
     import tkinter.messagebox  # noqa: F401  (used by SettingsWindow)
-    if already_running():
-        ctypes.windll.user32.MessageBoxW(None, "Myanmar Flow က ဖွင့်ထားပြီးသားပါ (tray မှာကြည့်ပါ)။", APP_NAME, 0x40)
+    if plat.already_running(DATA_DIR):
+        where = "menu bar" if IS_MAC else "tray"
+        plat.alert(APP_NAME, f"Myanmar Flow က ဖွင့်ထားပြီးသားပါ ({where} မှာကြည့်ပါ)။")
         return
-    log.info("Starting %s %s (burmese text shaping: %s)", APP_NAME, APP_VERSION, HAS_RAQM)
+    log.info("Starting %s %s (burmese text shaping: %s)", APP_NAME, APP_VERSION,
+             "raqm" if HAS_RAQM else "macOS" if CAN_SHAPE else "none")
     try:
         App().run()
     except Exception:
