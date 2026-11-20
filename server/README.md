@@ -107,6 +107,8 @@ for example `http://127.0.0.1:8787`. They make small test codes (named `server_t
 
 - Google's Gemini terms are written for your own apps. Reselling access to them is a grey area,
   and Google could suspend the key. Keep your Google Cloud billing alert on.
-- Gemini isn't offered in every country. `wrangler.toml` turns on Smart Placement, which runs
-  the Worker near Google rather than near the user. Still, test once from Myanmar after deploying.
-  "location is not supported" means the call left from the wrong place.
+- Gemini isn't offered in Myanmar. Cloudflare normally runs a Worker at the location nearest the
+  user, which for a Myanmar user can mean Google sees a Myanmar address and refuses. `wrangler.toml`
+  pins the Worker to Google Cloud's Singapore region (`targeted` placement) so calls always leave
+  from Singapore. To check from any network, open `https://myanmar-flow.thecrasho.com/mf/where`:
+  `google_sees` must be a supported country such as `SG`.

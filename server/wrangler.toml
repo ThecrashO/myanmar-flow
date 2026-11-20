@@ -2,9 +2,11 @@ name = "myanmar-flow"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 
-# Run near Google rather than near the user, so calls don't come from a country Gemini doesn't serve.
+# Always run in Singapore, never at the edge closest to the user. Gemini refuses calls
+# from Myanmar, and Cloudflare would otherwise run a Myanmar user's request in or near Myanmar.
 [placement]
-mode = "smart"
+mode = "targeted"
+region = "gcp:asia-southeast1"
 
 # Secrets (never put them in this file):
 #   npx wrangler secret put GEMINI_API_KEY   your paid Gemini API key

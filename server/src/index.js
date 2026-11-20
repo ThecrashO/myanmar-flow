@@ -33,6 +33,7 @@ export default {
       if (url.pathname === "/admin") return new Response(adminPage, { headers: { "content-type": "text/html; charset=utf-8" } });
       if (url.pathname.startsWith("/admin/api/")) return await admin(request, env, url);
       if (url.pathname === "/mf/balance") return await balance(request, env);
+      if (url.pathname === "/mf/where") return await where(request);
       if (url.pathname === LIVE_PATH) return await live(request, env, ctx);
       if (url.pathname === "/v1beta/interactions" && request.method === "POST") return await batch(request, env, ctx);
       const m = url.pathname.match(/^\/v1beta\/models\/([\w.-]+):generateContent$/);
@@ -349,4 +350,13 @@ async function admin(request, env, url) {
     return json({ ledger: results });
   }
   return fail(404, "mf_not_found", "Not found");
+}
+
+
+// Where the user came in and where calls to Google leave from. Gemini only cares about the second.
+async function where(request) {
+  const trace = await (await fetch("https://www.cloudflare.com/cdn-cgi/trace")).text();
+  const field = (name) => (trace.match(new RegExp("^" + name + "=(.*)$", "m")) || [])[1];
+  return json({ user_country: request.cf?.country, entry: request.cf?.colo,
+                google_sees: field("loc"), runs_in: field("colo") });
 }
