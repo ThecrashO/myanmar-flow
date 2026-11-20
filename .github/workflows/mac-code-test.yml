@@ -12,6 +12,7 @@ jobs:
   test:
     strategy:
       fail-fast: false
+      max-parallel: 1   # both use the same code; one at a time keeps each charge check exact
       matrix:
         runner: [macos-latest, macos-15-intel]   # Apple Silicon, Intel
     runs-on: ${{ matrix.runner }}
