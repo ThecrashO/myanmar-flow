@@ -727,7 +727,7 @@ def mix(fg, bg, t):
 
 
 class Indicator:
-    """Wispr-style pill near the bottom of the screen: live waveform and timer
+    """Wispr-style pill at the top centre of the screen: live waveform and timer
     while recording, a spinner while transcribing, a check when done.
 
     Drawn with Pillow (anti-aliased, soft shadow) into a per-pixel-alpha layered
@@ -751,7 +751,7 @@ class Indicator:
         self.smoothed = 0.0
         self.levels = deque([0.0] * BARS, maxlen=BARS)
         self.visible = False
-        self.anchor = (0, 0, 1.0)  # centre x, bottom y (physical px), scale
+        self.anchor = (0, 0, 1.0)  # centre x, top y (physical px), scale
         self.bases = {}
         self.fonts = {}
         self.live_text = ""
@@ -791,7 +791,8 @@ class Indicator:
             self.live_text = text
 
     def locate(self):
-        """Bottom centre of the work area of the monitor the user is typing on."""
+        """Top centre of the work area of the monitor the user is typing on, where it
+        doesn't cover the message box chat apps keep at the bottom."""
         with dpi_aware():
             mon = user32.MonitorFromWindow(user32.GetForegroundWindow(), 2)  # MONITOR_DEFAULTTONEAREST
             info = MONITORINFO()
@@ -804,7 +805,7 @@ class Indicator:
                 pass
         scale = dpi_x.value / 96
         r = info.rcWork
-        self.anchor = ((r.left + r.right) // 2, r.bottom - int(24 * scale), scale)
+        self.anchor = ((r.left + r.right) // 2, r.top, scale)
 
     # --- animation loop (Tk thread)
 
@@ -955,16 +956,16 @@ class Indicator:
         gap = int(8 * k)
         canvas = Image.new("RGBA", (max(pill.width, bubble.width + int(2 * self.MARGIN * k)),
                                     pill.height + bubble.height + gap), (0, 0, 0, 0))
-        canvas.alpha_composite(pill, ((canvas.width - pill.width) // 2, canvas.height - pill.height))
-        canvas.alpha_composite(bubble, ((canvas.width - bubble.width) // 2, int(self.MARGIN * k)))
+        canvas.alpha_composite(pill, ((canvas.width - pill.width) // 2, 0))  # pill on top, words below
+        canvas.alpha_composite(bubble, ((canvas.width - bubble.width) // 2, pill.height - int(self.MARGIN * k) + gap))
         return canvas
 
     def present(self, img):
         """Push a premultiplied BGRA bitmap to the layered window (UpdateLayeredWindow)."""
-        cx, bottom, scale = self.anchor
+        cx, top, scale = self.anchor
         w, h = img.size
         x = cx - w // 2
-        y = bottom - h + int((1 - self.alpha) * 10 * scale)  # slight rise while fading in
+        y = top - int((1 - self.alpha) * 10 * scale)  # slight drop while fading in
         rgba = np.asarray(img, dtype=np.uint16)
         a = rgba[..., 3]
         bgra = np.dstack([rgba[..., 2] * a // 255, rgba[..., 1] * a // 255, rgba[..., 0] * a // 255, a])
@@ -1054,7 +1055,10 @@ class SettingsWindow:
         for i, (label, var) in enumerate(checks):
             ttk.Checkbutton(frm, text=label, variable=var).grid(row=n + 1 + i, column=1, sticky="w", pady=(8 if i == 0 else 0, 0))
         btns = ttk.Frame(frm)
-        btns.grid(row=n + 1 + len(checks), column=0, columnspan=2, sticky="e", pady=(14, 0))
+        btns.grid(row=n + 1 + len(checks), column=0, columnspan=2, sticky="we", pady=(14, 0))
+        version = ttk.Label(btns, text=f"Version {APP_VERSION}", foreground="#6b7280", cursor="hand2")
+        version.pack(side="left")
+        version.bind("<Button-1>", lambda e: webbrowser.open(REPO_URL + "/releases"))
         ttk.Button(btns, text="Cancel", command=self.win.destroy).pack(side="right", padx=(6, 0))
         ttk.Button(btns, text="Save", command=self.save).pack(side="right")
 
