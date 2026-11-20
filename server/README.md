@@ -49,7 +49,8 @@ them once when fewer than 10 minutes remain.
 
 `https://myanmar-flow.thecrasho.com/` is the product page: what the app does, key vs Code
 (with the VPN note), prices, how to start with a Code, FAQ, and contact. Its order form writes
-a ready message and opens Messenger, or copies it for Telegram. Edit it in `src/landing.html`
+a ready message and opens Telegram with it (and copies it, in case the Telegram app ignores the
+link's text). Edit it in `src/landing.html`
 and run `npm run deploy`. `/health` answers with plain text for uptime checks.
 
 ## Selling minutes

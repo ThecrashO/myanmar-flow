@@ -154,7 +154,7 @@
   .choices input:checked + label { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
   .choices input:focus-visible + label { outline: 2px solid var(--accent); }
   .preview { margin-top: 18px; background: var(--tint); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--muted); white-space: pre-wrap; }
-  .send { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .send { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 16px; }
   .send .btn { justify-content: center; }
   .btn.tg { background: #229ed9; color: #fff; }
   #copied { min-height: 1.4em; font-size: 13px; color: var(--ok); margin: 10px 0 0; }
@@ -425,7 +425,7 @@
     <p class="eyebrow">Code နဲ့ စသုံးနည်း</p>
     <h2>ဝယ်ပြီး <em>၅ မိနစ်</em>အတွင်း စသုံးလို့ရ</h2>
     <ol class="steps">
-      <li><div><b>Code ဝယ်ပါ</b><span>အောက်က form မှာ pack ရွေးပြီး Messenger ဒါမှမဟုတ် Telegram နဲ့ ပို့ပါ။ ငွေပေးချေပြီးရင် Code ပို့ပေးပါမယ်။</span></div></li>
+      <li><div><b>Code ဝယ်ပါ</b><span>အောက်က form မှာ pack ရွေးပြီး Telegram နဲ့ ပို့ပါ (ဒါမှမဟုတ် ဖုန်း / Viber နဲ့ ဆက်သွယ်ပါ)။ ငွေပေးချေပြီးရင် Code ပို့ပေးပါမယ်။</span></div></li>
       <li id="mac"><div><b>App ကို Install လုပ်ပါ</b><span>
         Windows: <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-Setup.exe">MyanmarFlow-Setup.exe</a> ·
         Mac (M1/M2/M3/M4): <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-mac.zip">MyanmarFlow-mac.zip</a> ·
@@ -467,11 +467,8 @@
     <div>
       <p class="eyebrow">Code ဝယ်ရန် · ဆက်သွယ်ရန်</p>
       <h2 style="color:#fff">မေးချင်တာရှိရင် <em style="color:var(--accent-2)">တိုက်ရိုက်</em> ဆက်သွယ်ပါ</h2>
-      <p class="lead">Form ဖြည့်ပြီး Messenger ဒါမှမဟုတ် Telegram ခလုတ်ကို နှိပ်လိုက်ရင် စာက အဆင်သင့် ရေးပြီးသား ဖြစ်နေပါမယ် — Send ပဲ နှိပ်ရုံပါ။ အမြန်ဆုံး ပြန်ဖြေပေးပါမယ်။</p>
+      <p class="lead">Form ဖြည့်ပြီး Telegram ခလုတ်ကို နှိပ်လိုက်ရင် စာက အဆင်သင့် ရေးပြီးသား ဖြစ်နေပါမယ် — Send ပဲ နှိပ်ရုံပါ။ အမြန်ဆုံး ပြန်ဖြေပေးပါမယ်။</p>
       <div class="direct">
-        <a href="https://m.me/thecrashoai" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.4 2 2 6.1 2 11.7c0 2.9 1.2 5.5 3.2 7.2v3.5l3-1.7c1.2.3 2.5.5 3.8.5 5.6 0 10-4.1 10-9.6S17.6 2 12 2Zm1 12.9-2.5-2.7-5 2.7 5.5-5.8 2.6 2.7 4.9-2.7-5.5 5.8Z"/></svg>
-          <div>Messenger<small>ThecrashO Page</small></div></a>
         <a href="https://t.me/thecrashO" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.2 1.1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13 1.4 11.5c-1-.3-1.1-1 .2-1.5L20.5 2.8c.9-.3 1.6.2 1.4 1.5Z"/></svg>
           <div>Telegram<small>@thecrashO</small></div></a>
@@ -503,7 +500,6 @@
       <input id="code" placeholder="MF-XXXX-XXXX" autocomplete="off" spellcheck="false">
       <div class="preview" id="preview" aria-live="polite"></div>
       <div class="send">
-        <a class="btn solid" id="toMessenger" href="https://m.me/thecrashoai" target="_blank" rel="noopener">Messenger နဲ့ ပို့မယ်</a>
         <a class="btn tg" id="toTelegram" href="https://t.me/thecrashO" target="_blank" rel="noopener">Telegram နဲ့ ပို့မယ်</a>
       </div>
       <p id="copied"></p>
@@ -537,7 +533,6 @@
   function update() {
     var text = message();
     $("preview").textContent = text;
-    $("toMessenger").href = "https://m.me/thecrashoai?text=" + encodeURIComponent(text);
     $("toTelegram").href = "https://t.me/thecrashO?text=" + encodeURIComponent(text);
   }
   document.getElementById("order").addEventListener("input", update);
