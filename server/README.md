@@ -111,4 +111,5 @@ for example `http://127.0.0.1:8787`. They make small test codes (named `server_t
   user, which for a Myanmar user can mean Google sees a Myanmar address and refuses. `wrangler.toml`
   pins the Worker to Google Cloud's Singapore region (`targeted` placement) so calls always leave
   from Singapore. To check from any network, open `https://myanmar-flow.thecrasho.com/mf/where`:
-  `google_sees` must be a supported country such as `SG`.
+  `runs_in` should be `SIN` and `google_accepts` must be `true`. (Confirmed on 2026-11-21 from
+  Myanmar with no VPN.)

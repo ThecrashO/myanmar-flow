@@ -33,7 +33,7 @@ export default {
       if (url.pathname === "/admin") return new Response(adminPage, { headers: { "content-type": "text/html; charset=utf-8" } });
       if (url.pathname.startsWith("/admin/api/")) return await admin(request, env, url);
       if (url.pathname === "/mf/balance") return await balance(request, env);
-      if (url.pathname === "/mf/where") return await where(request);
+      if (url.pathname === "/mf/where") return await where(request, env);
       if (url.pathname === LIVE_PATH) return await live(request, env, ctx);
       if (url.pathname === "/v1beta/interactions" && request.method === "POST") return await batch(request, env, ctx);
       const m = url.pathname.match(/^\/v1beta\/models\/([\w.-]+):generateContent$/);
@@ -353,10 +353,17 @@ async function admin(request, env, url) {
 }
 
 
-// Where the user came in and where calls to Google leave from. Gemini only cares about the second.
-async function where(request) {
+// Where the server runs and whether Google accepts calls from there (a free model-list call).
+// Cloudflare's own trace page can't answer this: it reports the visitor's country, not the server's.
+async function where(request, env) {
   const trace = await (await fetch("https://www.cloudflare.com/cdn-cgi/trace")).text();
-  const field = (name) => (trace.match(new RegExp("^" + name + "=(.*)$", "m")) || [])[1];
-  return json({ user_country: request.cf?.country, entry: request.cf?.colo,
-                google_sees: field("loc"), runs_in: field("colo") });
+  const google = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1",
+                             { headers: { "x-goog-api-key": env.GEMINI_API_KEY } });
+  const body = google.ok ? "" : await google.text();
+  return json({
+    user_country: request.cf?.country,
+    runs_in: (trace.match(/^colo=(.*)$/m) || [])[1],
+    google_accepts: google.ok,
+    google_error: google.ok ? undefined : (body.includes("location is not supported") ? "location not supported" : google.status),
+  });
 }
