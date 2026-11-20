@@ -47,7 +47,18 @@ jobs:
             dist/MyanmarFlow-Setup.exe
 
   macos:
-    runs-on: macos-latest   # Apple Silicon (M1 and newer)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest      # Apple Silicon (M1 and newer)
+            name: macos
+            zip: MyanmarFlow-mac.zip
+          - runner: macos-15-intel    # Intel Macs
+            name: macos-intel
+            zip: MyanmarFlow-mac-intel.zip
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -59,10 +70,11 @@ jobs:
         run: python -m pip install -r requirements.txt pyinstaller
 
       - name: Smoke test (pill on screen)
-        run: python tests/smoke_pill.py . pill-mac.png
+        run: python tests/smoke_pill.py . pill-${{ matrix.name }}.png
 
       - name: Build app
         run: |
+          uname -m
           python -c "import myanmar_flow as m; m.make_icon(m.STATE_COLORS['idle'], 512).save('icon.png')"
           pyinstaller --noconfirm --windowed --name MyanmarFlow --icon icon.png \
             --osx-bundle-identifier com.thecrasho.myanmarflow \
@@ -78,7 +90,8 @@ jobs:
           setkey NSMicrophoneUsageDescription string "'Myanmar Flow listens while you hold the hotkey and turns your speech into text.'"
           # Editing Info.plist breaks PyInstaller's ad-hoc signature; Apple Silicon won't run unsigned code.
           codesign --force --deep --sign - dist/MyanmarFlow.app
-          ditto -c -k --keepParent dist/MyanmarFlow.app dist/MyanmarFlow-mac.zip
+          file dist/MyanmarFlow.app/Contents/MacOS/MyanmarFlow
+          ditto -c -k --keepParent dist/MyanmarFlow.app "dist/${{ matrix.zip }}"
 
       - name: Smoke test (built app starts)
         run: |
@@ -94,10 +107,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: macos
+          name: ${{ matrix.name }}
           path: |
-            dist/MyanmarFlow-mac.zip
-            pill-mac*.png
+            dist/${{ matrix.zip }}
+            pill-${{ matrix.name }}*.png
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -112,11 +125,13 @@ jobs:
             windows/MyanmarFlow-Setup.exe
             windows/MyanmarFlow.exe
             macos/dist/MyanmarFlow-mac.zip
+            macos-intel/dist/MyanmarFlow-mac-intel.zip
           body: |
             ## Download
 
             - **MyanmarFlow-Setup.exe** — Windows မှာ ထည့်သွင်းရန် (အကြံပြု) / Windows installer (recommended)
             - **MyanmarFlow.exe** — Windows မှာ Install မလုပ်ဘဲ တိုက်ရိုက်ဖွင့်ရန် / Windows portable
-            - **MyanmarFlow-mac.zip** — Mac (M1 နဲ့ အသစ်) အတွက် / macOS, Apple Silicon
+            - **MyanmarFlow-mac.zip** — Mac (M1, M2, M3, M4 ...) အတွက် / macOS, Apple Silicon
+            - **MyanmarFlow-mac-intel.zip** — Intel Mac အတွက် / macOS, Intel
 
             Setup လမ်းညွှန်: https://github.com/ThecrashO/myanmar-flow#readme

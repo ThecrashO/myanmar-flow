@@ -50,12 +50,16 @@
 
 Mac version က Windows version နဲ့ အတူတူပါပဲ။ မတူတာတွေကိုပဲ ဒီမှာ ရေးထားပါတယ်။ ကျန်တာ (API key ယူနည်း၊ Settings၊ Shortcut ...) ကို အောက်က အပိုင်းတွေအတိုင်း လုပ်ပါ။
 
-> ⚠️ **Apple Silicon (M1, M2, M3, M4 ...) Mac** တွေမှာပဲ သုံးလို့ရသေးပါတယ်။ Intel Mac တွေမှာ မရသေးပါ။
-> ( Apple menu  → **About This Mac** → **Chip** မှာ "Apple M..." လို့ ပေါ်ရင် ရပါတယ်)
+> 💡 Mac အမျိုးအစားအလိုက် file မတူပါဘူး။ ( Apple menu  → **About This Mac** မှာ ကြည့်ပါ)
+>
+> | About This Mac မှာ ပေါ်တာ | Download လုပ်ရမယ့် file |
+> |---|---|
+> | **Chip**: Apple M1, M2, M3, M4 ... | **`MyanmarFlow-mac.zip`** |
+> | **Processor**: Intel Core ... | **`MyanmarFlow-mac-intel.zip`** |
 
 ### Install လုပ်နည်း
 
-1. [Release စာမျက်နှာ](https://github.com/ThecrashO/myanmar-flow/releases/latest) ကနေ **`MyanmarFlow-mac.zip`** ကို download လုပ်ပါ
+1. [Release စာမျက်နှာ](https://github.com/ThecrashO/myanmar-flow/releases/latest) ကနေ ကိုယ့် Mac နဲ့ ကိုက်တဲ့ zip (**`MyanmarFlow-mac.zip`** ဒါမှမဟုတ် Intel Mac ဆိုရင် **`MyanmarFlow-mac-intel.zip`**) ကို download လုပ်ပါ
 2. Zip ကို နှစ်ချက်နှိပ်ဖွင့်ပါ → ထွက်လာတဲ့ **MyanmarFlow** ကို **Applications** folder ထဲ ဆွဲထည့်ပါ
 3. ပထမဆုံးအကြိမ် ဖွင့်တဲ့အခါ **Right-click → Open → Open** ကို နှိပ်ပါ
    - "Apple could not verify..." ပေါ်ရင် **System Settings → Privacy & Security** ကိုသွားပြီး အောက်နားက **Open Anyway** ကိုနှိပ်ပါ
@@ -116,7 +120,7 @@ Myanmar Flow က **မြန်မာလို ပြောလိုက်တာ
 
 | လိုအပ်တာ | မှတ်ချက် |
 |---|---|
-| 💻 **Windows 10 / 11** ဒါမှမဟုတ် **Mac** (M1 နဲ့ အသစ်) | Mac အတွက် [ဒီမှာ](#mac) ဖတ်ပါ။ ဖုန်း မရသေးပါ |
+| 💻 **Windows 10 / 11** ဒါမှမဟုတ် **Mac** (M1 နဲ့ အသစ် / Intel) | Mac အတွက် [ဒီမှာ](#mac) ဖတ်ပါ။ ဖုန်း မရသေးပါ |
 | 🎙️ **Microphone** | Laptop မှာ ပါပြီးသားပါ။ Headset mic ဆို ပိုကြည်ပါတယ် |
 | 🌐 **Internet** | ပြောတိုင်း အသံကို Google ဆီ ပို့ရလို့ပါ |
 | 📧 **Google account** (Gmail) | API key ယူဖို့ပါ — **အခမဲ့** |

@@ -26,7 +26,7 @@
 | စာရှည် လက်မလိုဘဲ | Key **၂ ချက်** နှိပ် → ပြော → **၁ ချက်** နှိပ်ရင် ရပ် |
 | Settings / အကူအညီ | နာရီဘေးက icon ကို **Right-click** |
 
-> 🍎 **Mac** — `MyanmarFlow-mac.zip` ကို download လုပ်ပါ (M1 နဲ့ အသစ်)။ Key က **ညာ `Option`** (English က **ညာ `Command`**)။ [Mac လမ်းညွှန် →](docs/GUIDE.md#mac)
+> 🍎 **Mac** — `MyanmarFlow-mac.zip` ကို download လုပ်ပါ (Intel Mac ဆိုရင် `MyanmarFlow-mac-intel.zip`)။ Key က **ညာ `Option`** (English က **ညာ `Command`**)။ [Mac လမ်းညွှန် →](docs/GUIDE.md#mac)
 
 ## ဘာတွေ လုပ်ပေးလဲ
 
@@ -50,7 +50,7 @@
 
 ## English
 
-**Myanmar Flow** is a small tray / menu-bar app for Burmese voice typing on Windows and macOS (Apple Silicon). Hold **Right Ctrl** (Mac: **Right Option**), speak, release, and the text is pasted into whatever app has focus. Hold **Right Alt** (Mac: **Right Command**) to speak Burmese and get English. Double-tap either key for hands-free dictation. On a Mac, allow Microphone and Accessibility when asked.
+**Myanmar Flow** is a small tray / menu-bar app for Burmese voice typing on Windows and macOS (Apple Silicon and Intel). Hold **Right Ctrl** (Mac: **Right Option**), speak, release, and the text is pasted into whatever app has focus. Hold **Right Alt** (Mac: **Right Command**) to speak Burmese and get English. Double-tap either key for hands-free dictation. On a Mac, allow Microphone and Accessibility when asked.
 
 It uses your own free [Gemini API key](https://aistudio.google.com/apikey). The Gemini API is [not available in Myanmar](https://ai.google.dev/gemini-api/docs/available-regions) yet.
 
@@ -67,7 +67,7 @@ py -m venv .venv
 .venv\Scripts\pythonw myanmar_flow.py
 ```
 
-Platform code lives in `platform_win.py` and `platform_mac.py`. `build.bat` builds `dist\MyanmarFlow.exe` with PyInstaller, and `installer.iss` builds the installer with [Inno Setup](https://jrsoftware.org/isinfo.php). Pushing a `v*` tag builds the Windows installer and `MyanmarFlow-mac.zip` on GitHub Actions and publishes a release.
+Platform code lives in `platform_win.py` and `platform_mac.py`. `build.bat` builds `dist\MyanmarFlow.exe` with PyInstaller, and `installer.iss` builds the installer with [Inno Setup](https://jrsoftware.org/isinfo.php). Pushing a `v*` tag builds the Windows installer and the two Mac zips (Apple Silicon and Intel) on GitHub Actions and publishes a release.
 
 </details>
 
