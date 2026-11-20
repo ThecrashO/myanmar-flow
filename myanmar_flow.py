@@ -617,6 +617,8 @@ def make_icon(color, size=64):
 # ---------------------------------------------------------------- floating indicator
 
 HAS_RAQM = features.check("raqm")  # complex-script shaping, needed to draw Burmese
+# Without raqm (Pillow's macOS wheels), macOS draws Burmese with its own text engine.
+CAN_SHAPE = HAS_RAQM or hasattr(plat, "render_text")
 SUPERSAMPLE = 3
 BARS = 21
 PILL_BG = (20, 20, 23)
@@ -662,6 +664,7 @@ class Indicator:
         self.anchor = (0, 0, 1.0)  # centre x, top y, scale
         self.bases = {}
         self.fonts = {}
+        self.text_cache = {}
         self.live_text = ""
         self.bubble_cache = (None, None)
         self.overlay = plat.Overlay()
@@ -734,10 +737,33 @@ class Indicator:
                 self.fonts[key] = ImageFont.load_default(max(1, int(size * k)))
         return self.fonts[key]
 
+    def text_image(self, text, size, k):
+        """Burmese text rendered by the OS (macOS), white on transparent, cached."""
+        key = (text, size, k)
+        if key not in self.text_cache:
+            if len(self.text_cache) > 64:
+                self.text_cache.clear()
+            self.text_cache[key] = plat.render_text(text, size * k, WHITE)
+        return self.text_cache[key]
+
+    def measure(self, text, size, k):
+        """Width of Burmese text in supersampled pixels (0 if it can't be drawn)."""
+        if HAS_RAQM:
+            return self.font("mmrtext.ttf", size, k).getlength(text)
+        return self.text_image(text, size, k).width if CAN_SHAPE else 0
+
+    def put_text(self, img, x, cy, text, size, k):
+        """Draw Burmese text with its left edge at x, centred on cy."""
+        if HAS_RAQM:
+            ImageDraw.Draw(img).text((x, cy), text, font=self.font("mmrtext.ttf", size, k),
+                                     fill=WHITE + (255,), anchor="lm")
+        elif CAN_SHAPE:
+            t = self.text_image(text, size, k)
+            img.alpha_composite(t, (int(x), int(cy - t.height / 2)))
+
     def width(self, k):
         if self.mode == "error" or (self.mode == "done" and self.text):
-            text_w = self.font("mmrtext.ttf", 13, k).getlength(self.text) / k if HAS_RAQM else 0
-            return int(52 + text_w + 18)
+            return int(52 + self.measure(self.text, 13, k) / k + 18)
         return 204
 
     def base(self, w, k):
@@ -798,18 +824,16 @@ class Indicator:
             d.line([(at(16), cy), (at(19), cy + 3 * k), (at(24.5), cy - 3.5 * k)],
                    fill=WHITE + (255,), width=max(1, int(2.2 * k)), joint="curve")
             if self.text:
-                if HAS_RAQM:
-                    d.text((at(38), cy), self.text, font=self.font("mmrtext.ttf", 13, k), fill=WHITE + (255,), anchor="lm")
+                self.put_text(img, at(38), cy, self.text, 13, k)
             else:
                 fade = max(0.0, 1 - t / 0.3)
                 bars([3 + 4 * fade] * BARS, mix(DIM, PILL_BG, 0.7))
         elif self.mode == "error":
             d.ellipse((at(20 - 8), cy - 8 * k, at(20 + 8), cy + 8 * k), fill=RED + (255,))
             d.text((at(20), cy), "!", font=self.font("segoeuib.ttf", 12, k), fill=WHITE + (255,), anchor="mm")
-            if HAS_RAQM:
-                d.text((at(38), cy), self.text, font=self.font("mmrtext.ttf", 13, k), fill=WHITE + (255,), anchor="lm")
+            self.put_text(img, at(38), cy, self.text, 13, k)
 
-        if self.live_text and HAS_RAQM and self.mode in ("recording", "transcribing"):
+        if self.live_text and CAN_SHAPE and self.mode in ("recording", "transcribing"):
             img = self.with_bubble(img, k)
         final = (round(img.width / SUPERSAMPLE), round(img.height / SUPERSAMPLE))
         return img.resize(final, Image.LANCZOS)
@@ -821,24 +845,23 @@ class Indicator:
         """The live transcript in a dark bubble: the newest words that fit on one line."""
         if self.bubble_cache[0] == (self.live_text, k):
             return self.bubble_cache[1]
-        font = self.font("mmrtext.ttf", 14, k)
         limit = (self.BUBBLE_MAX_W - 36) * k
         text, words = self.live_text, self.live_text.split()
-        while len(words) > 1 and font.getlength(text) > limit:
+        while len(words) > 1 and self.measure(text, 14, k) > limit:
             words = words[1:]
             text = "… " + " ".join(words)
-        while font.getlength(text) > limit and len(text) > 3:  # one very long word
+        while self.measure(text, 14, k) > limit and len(text) > 3:  # one very long word
             text = text[2:]
             while text and unicodedata.category(text[0]) in ("Mn", "Mc"):  # don't start mid-syllable
                 text = text[1:]
             text = "…" + text
-        w, h = font.getlength(text) / k + 36, self.BUBBLE_H
+        w, h = self.measure(text, 14, k) / k + 36, self.BUBBLE_H
         img = Image.new("RGBA", (int((w + 4) * k), int((h + 6) * k)), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         d.rounded_rectangle((2 * k, 4 * k, (w + 2) * k, (h + 4) * k), radius=12 * k, fill=(0, 0, 0, 70))
         d.rounded_rectangle((2 * k, 2 * k, (w + 2) * k, (h + 2) * k), radius=12 * k, fill=PILL_BORDER + (255,))
         d.rounded_rectangle((3 * k, 3 * k, (w + 1) * k, (h + 1) * k), radius=11 * k, fill=(30, 30, 34, 255))
-        d.text((20 * k, (2 + h / 2) * k), text, font=font, fill=WHITE + (255,), anchor="lm")
+        self.put_text(img, 20 * k, (2 + h / 2) * k, text, 14, k)
         self.bubble_cache = ((self.live_text, k), img)
         return img
 
@@ -1662,7 +1685,8 @@ def main():
         where = "menu bar" if IS_MAC else "tray"
         plat.alert(APP_NAME, f"Myanmar Flow က ဖွင့်ထားပြီးသားပါ ({where} မှာကြည့်ပါ)။")
         return
-    log.info("Starting %s %s (burmese text shaping: %s)", APP_NAME, APP_VERSION, HAS_RAQM)
+    log.info("Starting %s %s (burmese text shaping: %s)", APP_NAME, APP_VERSION,
+             "raqm" if HAS_RAQM else "macOS" if CAN_SHAPE else "none")
     try:
         App().run()
     except Exception:

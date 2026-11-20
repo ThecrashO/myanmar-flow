@@ -97,7 +97,7 @@ jobs:
           name: macos
           path: |
             dist/MyanmarFlow-mac.zip
-            pill-mac.png
+            pill-mac*.png
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

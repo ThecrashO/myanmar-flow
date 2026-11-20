@@ -12,7 +12,8 @@ assert mf.plat.valid_hotkey(mf.DEFAULT_CONFIG["hotkey"]), mf.DEFAULT_CONFIG["hot
 assert mf.plat.valid_hotkey(mf.DEFAULT_CONFIG["translate_hotkey"])
 for name in ("mmrtext.ttf", "segoeui.ttf", "segoeuib.ttf"):
     print(name, "->", mf.plat.font_path(name), mf.plat.font_path(name).exists())
-print("raqm:", mf.HAS_RAQM, "hotkeys:", mf.DEFAULT_CONFIG["hotkey"], "/", mf.DEFAULT_CONFIG["translate_hotkey"])
+assert mf.CAN_SHAPE, "can't draw Burmese text"
+print("raqm:", mf.HAS_RAQM, "shape:", mf.CAN_SHAPE, "hotkeys:", mf.DEFAULT_CONFIG["hotkey"], "/", mf.DEFAULT_CONFIG["translate_hotkey"])
 
 root = tk.Tk()
 root.withdraw()
@@ -21,7 +22,7 @@ ind.set_state("recording")
 root.after(500, lambda: ind.set_live("မင်္ဂလာပါ ဒီနေ့ ညနေ ခြောက်နာရီမှာ တွေ့ကြမယ်"))
 
 
-def grab():
+def grab(out=out):
     from PIL import ImageGrab
     print("anchor", ind.anchor)
     if mf.IS_MAC:
@@ -33,9 +34,14 @@ def grab():
             w = int(700 * scale)
             ImageGrab.grab(bbox=(cx - w // 2, max(0, top - 10), cx + w // 2, top + int(150 * scale)),
                            all_screens=True).save(out)
-    root.destroy()
 
 
-root.after(1800, grab)
+def done_state():
+    grab()
+    ind.set_state("done", "Copy ကူးထားပြီး — စာဝင်ပါပြီ")
+    root.after(700, lambda: (grab(out.replace(".png", "-done.png")), root.destroy()))
+
+
+root.after(1800, done_state)
 root.mainloop()
 print("ok")

@@ -7,6 +7,7 @@ thread, like the Windows `keyboard` hook does."""
 
 import fcntl
 import io
+import math
 import plistlib
 import subprocess
 import sys
@@ -15,6 +16,7 @@ from pathlib import Path
 import AppKit
 import numpy as np
 import sounddevice as sd
+from PIL import Image
 from pynput import keyboard as pkb
 
 # ---------------------------------------------------------------- fonts
@@ -34,6 +36,28 @@ def font_path(name):
         if path.exists():
             return path
     return Path(name)
+
+
+def render_text(text, px_size, rgb):
+    """Render text with macOS's own text engine (CoreText shapes Burmese correctly;
+    Pillow's macOS wheels can't). Returns a tight white-on-transparent PIL image."""
+    font = (AppKit.NSFont.fontWithName_size_("Myanmar Sangam MN", px_size)
+            or AppKit.NSFont.systemFontOfSize_(px_size))
+    color = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, 1.0)
+    string = AppKit.NSAttributedString.alloc().initWithString_attributes_(
+        text, {AppKit.NSFontAttributeName: font, AppKit.NSForegroundColorAttributeName: color})
+    size = string.size()
+    w, h = max(1, math.ceil(size.width) + 2), max(1, math.ceil(size.height) + 2)
+    rep = AppKit.NSBitmapImageRep.alloc().initWithBitmapDataPlanes_pixelsWide_pixelsHigh_bitsPerSample_samplesPerPixel_hasAlpha_isPlanar_colorSpaceName_bytesPerRow_bitsPerPixel_(
+        None, w, h, 8, 4, True, False, AppKit.NSDeviceRGBColorSpace, 0, 0)
+    ctx = AppKit.NSGraphicsContext.graphicsContextWithBitmapImageRep_(rep)
+    AppKit.NSGraphicsContext.saveGraphicsState()
+    AppKit.NSGraphicsContext.setCurrentContext_(ctx)
+    string.drawAtPoint_((1, 1))
+    ctx.flushGraphics()
+    AppKit.NSGraphicsContext.restoreGraphicsState()
+    png = rep.representationUsingType_properties_(AppKit.NSBitmapImageFileTypePNG, {})
+    return Image.open(io.BytesIO(bytes(png))).convert("RGBA")
 
 
 # ---------------------------------------------------------------- floating pill window
