@@ -72,7 +72,7 @@ DEFAULT_CONFIG = {
     "api_key": "",
     "model": "gemini-3.5-transcribe",
     # Used only by *-transcribe models (Interactions API).
-    "language_codes": ["my-MM"],
+    "language_codes": ["my-MM", "en-US"],
     "transcribe_mode": "smart",
     "custom_vocabulary": [],
     # Stream audio while speaking and show the words as they are recognised.
@@ -364,6 +364,12 @@ def rewrite(cfg, text, translate=False):
     system = TRANSLATE_PROMPT if translate else POLISH_PROMPT
     if vocabulary(cfg) and not translate:
         system += " These words and names may appear; spell them exactly like this: " + ", ".join(vocabulary(cfg))
+    fixes = [(w.strip(), r.strip()) for w, r in cfg["replacements"].items()
+             if w.strip() and r.strip() and len(w) <= 60 and len(r) <= 60][:50]
+    if fixes:
+        system += (" The speech recogniser often mishears these words; when the transcript has the word on the "
+                   "left, the speaker most likely said the word on the right: "
+                   + "; ".join(f"{w} → {r}" for w, r in fixes))
     out = generate(cfg, cfg["text_model"], [{"text": f"<transcript>\n{text}\n</transcript>"}], system=system,
                    generation_config={"thinkingConfig": {"thinkingLevel": "low"}}, timeout=12)
     return out or text
@@ -400,10 +406,48 @@ def find_snippet(cfg, text):
 # Thai letters the recogniser sometimes emits inside Burmese words (ရာသီဥตุ).
 THAI_LOOKALIKES = str.maketrans({"ต": "တ", "ุ": "ု", "ู": "ူ", "ิ": "ိ", "ี": "ီ"})
 
+MM_SIGNS = "ါ-ှ"  # vowel signs, tone marks, asat, virama, medials
+MM_SIGN = re.compile(f"[{MM_SIGNS}]")
+MM_LETTER = re.compile("[က-ဪဿ၌-၏]")  # consonants, independent vowels
+MM_DIGIT = re.compile("[၀-၉]")
+# Digits and letters that look the same: ၀ zero / ဝ wa, ၇ seven / ရ ya.
+AS_LETTER = {"၀": "ဝ", "၇": "ရ"}
+AS_DIGIT = {v: k for k, v in AS_LETTER.items()}
+
+
+def normalize_burmese(text):
+    """Fix Burmese mistakes that need no context: digits and letters that look alike,
+    ဥ written where ဉ or ဦ belongs, and marks written twice or in the wrong order."""
+    chars = list(text)
+    for i, c in enumerate(chars):
+        if c not in AS_LETTER and c not in AS_DIGIT:
+            continue
+        prev = chars[i - 1] if i else ""
+        nxt = chars[i + 1] if i + 1 < len(chars) else ""
+        letter_prev = bool(prev and (MM_LETTER.match(prev) or MM_SIGN.match(prev)))
+        letter_next = bool(nxt and (MM_LETTER.match(nxt) or MM_SIGN.match(nxt)))
+        digit_prev, digit_next = bool(prev and MM_DIGIT.match(prev)), bool(nxt and MM_DIGIT.match(nxt))
+        if c in AS_LETTER:
+            # A vowel sign or asat after it, or letters around it and no digits: it's a letter.
+            if (nxt and MM_SIGN.match(nxt)) or (letter_prev and not digit_next) or (letter_next and not digit_prev):
+                chars[i] = AS_LETTER[c]
+        elif not (nxt and MM_SIGN.match(nxt)):
+            # A bare letter next to a digit, with no letter on the other side: it's a digit (၁ဝ -> ၁၀).
+            if (digit_prev and not letter_next) or (digit_next and not letter_prev):
+                chars[i] = AS_DIGIT[c]
+    text = "".join(chars)
+    text = text.replace("ဥ်", "ဉ်")  # ဥ် -> ဉ်
+    text = text.replace("ဦ", "ဦ")  # ဥ + ီ -> ဦ
+    text = re.sub(f"([{MM_SIGNS}])\\1+", r"\1", text)  # the same mark twice
+    text = re.sub("[ျ-ှ]{2,}", lambda m: "".join(sorted(m.group())), text)  # ျ ြ ွ ှ order
+    text = text.replace("ုိ", "ို")  # ိ before ု (ကို)
+    text = text.replace("့်", "့်")  # ့ before ်
+    return text
+
 
 def fix_words(cfg, text):
     """Apply the user's word fixes, and expand shortcut phrases said inside a sentence."""
-    text = text.translate(THAI_LOOKALIKES)
+    text = normalize_burmese(text.translate(THAI_LOOKALIKES))
     for table in (cfg["replacements"], cfg["snippets"]):
         for wrong, right in table.items():
             if loose_pattern(wrong):
