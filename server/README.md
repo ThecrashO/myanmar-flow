@@ -77,6 +77,25 @@ npm run db:init:local
 npm run dev
 ```
 
+## Tests
+
+Two end-to-end tests make real Gemini calls (about 30 seconds of speech each) and need the
+admin token, either in `server/.admin-token.txt` or in `MF_ADMIN_TOKEN`. Run them from the repo
+root with the app's Python:
+
+```bash
+.venv/Scripts/python server/tests/server_test.py
+.venv/Scripts/python server/tests/app_test.py
+```
+
+- `server_test.py` checks the server itself: admin login, balances, batch, clean-up and Live
+  transcription, what each costs, refused models and prompts, and empty or switched-off codes.
+- `app_test.py` runs the app's own functions with a code, including the Burmese error messages.
+
+Both use the live server by default. To test a local `npm run dev` instead, pass its address,
+for example `http://127.0.0.1:8787`. They make small test codes (named `server_test` and
+`app_test`) and switch them off at the end. `speech.wav` is an 8.9-second English sentence.
+
 ## Things to know
 
 - Google's Gemini terms are written for your own apps. Reselling access to them is a grey area,
