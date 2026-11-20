@@ -111,7 +111,7 @@ jobs:
           files: |
             windows/MyanmarFlow-Setup.exe
             windows/MyanmarFlow.exe
-            macos/MyanmarFlow-mac.zip
+            macos/dist/MyanmarFlow-mac.zip
           body: |
             ## Download
 
