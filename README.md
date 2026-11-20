@@ -1,5 +1,7 @@
 # Myanmar Flow
 
+![Myanmar Flow: voice typing for laptops](docs/images/cover.jpg)
+
 **မြန်မာလို ပြောလိုက်ရုံနဲ့ ဘယ် app မှာမဆို စာဝင်တဲ့ Windows နဲ့ Mac program**
 *Burmese voice typing for Windows and macOS · [English](#english)*
 
