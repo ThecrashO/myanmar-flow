@@ -37,7 +37,7 @@ import websocket
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, features
 
 APP_NAME = "Myanmar Flow"
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 REPO_URL = "https://github.com/ThecrashO/myanmar-flow"
 DATA_DIR = Path(os.environ.get("APPDATA", Path.home())) / "MyanmarFlow"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
