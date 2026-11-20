@@ -1,69 +1,46 @@
-# Myanmar Flow 🎙️
+# Myanmar Flow
 
-**မြန်မာလို ပြောလိုက်တာကို ဘယ် app မှာမဆို စာအဖြစ် ချက်ချင်း ရိုက်ပေးတဲ့ Windows program။**
-
-Key ကို ဖိထား → မြန်မာလို ပြော → လွှတ်လိုက် → စာဝင်လာပြီ ✅
-Facebook, Messenger, Viber, Gmail, Word ... cursor ရှိတဲ့နေရာတိုင်းမှာ သုံးလို့ရပါတယ်။
+**မြန်မာလို ပြောလိုက်ရုံနဲ့ ဘယ် app မှာမဆို စာဝင်တဲ့ Windows program**
+*Burmese voice typing for Windows · [English](#english)*
 
 ![Myanmar Flow pill](docs/images/pill-states.png)
 
-*Voice dictation for Burmese on Windows. [English below](#english).*
+<p align="center">
+  <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest"><b>⬇️ Download (Windows 10 / 11 · အခမဲ့)</b></a>
+  &nbsp;·&nbsp;
+  <a href="docs/GUIDE.md"><b>📘 အသုံးပြုနည်း လမ်းညွှန်</b></a>
+</p>
 
 ---
 
-## ⬇️ Download
+## စသုံးနည်း
 
-### 👉 [**MyanmarFlow-Setup.exe ကို download လုပ်ရန်**](https://github.com/ThecrashO/myanmar-flow/releases/latest)
-
-(စာမျက်နှာအောက်က **Assets** ထဲမှာ `MyanmarFlow-Setup.exe` ကို နှိပ်ပါ) · Windows 10 / 11 · အခမဲ့
-
-## 📘 [အသုံးပြုနည်း လမ်းညွှန် အပြည့်အစုံ (မြန်မာလို) →](docs/GUIDE.md)
-
-Install လုပ်နည်း၊ API key ယူနည်း၊ နေ့စဉ်သုံးနည်း၊ Settings၊ ပြဿနာဖြေရှင်းနည်း — ပုံတွေနဲ့ အဆင့်လိုက် ရှင်းပြထားပါတယ်။
-
----
-
-## 🚀 ၃ မိနစ်နဲ့ စသုံးမယ်
-
-1. **Download & Install** — `MyanmarFlow-Setup.exe` ကိုဖွင့်ပါ။ အပြာရောင် box ပေါ်ရင် **More info → Run anyway** ([ဘာလို့လဲ?](docs/GUIDE.md#s3))
+1. **Install** — `MyanmarFlow-Setup.exe` ကို ဖွင့်ပါ။ အပြာရောင် box ပေါ်ရင် **More info → Run anyway** ([ဘာလို့လဲ?](docs/GUIDE.md#s3))
 2. **API key ထည့်** — Wizard က မြန်မာလို လမ်းပြပေးပါမယ်။ Google account နဲ့ အခမဲ့ ယူရပါတယ် ([အသေးစိတ်](docs/GUIDE.md#s4))
-3. **ပြော!** — စာရိုက်ချင်တဲ့နေရာ နှိပ် → **ညာဘက် `Ctrl`** ဖိထား → ပြော → လွှတ်
-
-## ⌨️ သုံးနည်း အတိုချုပ်
+3. **ပြော** — စာရိုက်မယ့်နေရာ နှိပ် → **ညာဘက် `Ctrl`** ဖိထား → ပြော → လွှတ်
 
 | လုပ်ချင်တာ | လုပ်ရမှာ |
 |---|---|
-| 🇲🇲 မြန်မာလို ရိုက်မယ် | **ညာ `Ctrl`** ဖိ → ပြော → လွှတ် |
-| 🇬🇧 မြန်မာလိုပြော၊ English ထွက် | **ညာ `Alt`** ဖိ → ပြော → လွှတ် |
-| 🙌 စာရှည် လက်မလိုဘဲ | Key **၂ ချက်** ဆက်နှိပ် → ပြော → **၁ ချက်** နှိပ်ရင် ရပ် |
-| ⏸️ ခဏ ရပ်ထား | နာရီဘေးက icon ကို **တစ်ချက်နှိပ်** |
-| ⚙️ Settings / 🆘 အကူအညီ | နာရီဘေးက icon ကို **Right-click** |
+| မြန်မာလို ရိုက်မယ် | **ညာ `Ctrl`** ဖိ → ပြော → လွှတ် |
+| မြန်မာလိုပြော၊ English ထွက် | **ညာ `Alt`** ဖိ → ပြော → လွှတ် |
+| စာရှည် လက်မလိုဘဲ | Key **၂ ချက်** နှိပ် → ပြော → **၁ ချက်** နှိပ်ရင် ရပ် |
+| Settings / အကူအညီ | နာရီဘေးက icon ကို **Right-click** |
 
-## ✨ Features
+## ဘာတွေ လုပ်ပေးလဲ
 
-- ⚡ **ပြောနေတုန်း စာပေါ်** — key ဖိပြောနေတုန်း စာကို တန်းမြင်ရ၊ လွှတ်တာနဲ့ စာဝင် ([Live](docs/GUIDE.md#live))
-- 🗣 **Shortcut** — "ငါ့လိပ်စာ" လို့ ပြောရုံနဲ့ လိပ်စာအပြည့် ဝင် · ✏️ အမြဲမှားတဲ့ စာလုံးကို အမြဲမှန်အောင် ပြင် ([အသေးစိတ်](docs/GUIDE.md#shortcuts))
-- 📊 **Dashboard** — အချိန် ဘယ်လောက် သက်သာလဲ၊ ခုနက ပြောခဲ့တဲ့စာ ပြန်ယူ ([အသေးစိတ်](docs/GUIDE.md#dashboard))
-- 🎯 **AI စာပြင်** — အကြားမှားတဲ့ စာလုံး၊ စာလုံးပေါင်း၊ ပုဒ်ဖြတ် (၊ ။) တွေကို အလိုလို ပြင်ပေး
-- 📋 **အလိုလို Copy** — Cursor ချဖို့ မေ့သွားလည်း စာမပျောက်၊ `Ctrl + V` နဲ့ ထည့်လို့ရ
-- 🌐 **English ဘာသာပြန်** — မြန်မာလို ပြောပြီး English စာ ထွက်
-- 🇲🇲+🇬🇧 မြန်မာ-English **ရောပြော**လို့ရ
-- 🙌 **လက်မလို mode** — စာရှည်ရှည် ပြောလို့ရ (၅ မိနစ်အထိ)
-- 🇲🇲 Setup wizard၊ error message အားလုံး **မြန်မာလို**
-- 🔒 **Privacy** — ကိုယ်ပိုင် API key နဲ့ Google ဆီပဲ ပို့၊ ပြောတဲ့စာကို ဘယ်မှာမှ မသိမ်း
-- ⬆️ Version အသစ်ထွက်ရင် **အလိုလို အသိပေး**
+- **ပြောနေတုန်း စာပေါ်** — key လွှတ်တာနဲ့ စာ ချက်ချင်းဝင်
+- **AI စာပြင်** — အကြားမှားတဲ့ စာလုံး၊ စာလုံးပေါင်း၊ ၊ ။ တွေကို အလိုလို ပြင်
+- **English ဘာသာပြန်** — မြန်မာလို ပြောပြီး English စာ ထွက်
+- **Shortcut** — "ငါ့လိပ်စာ" လို့ ပြောရင် လိပ်စာအပြည့် ဝင်
+- **Dashboard** — အချိန် ဘယ်လောက် သက်သာလဲ၊ ခုနက ပြောခဲ့တဲ့စာ ပြန်ယူ
+- **Privacy** — ကိုယ်ပိုင် API key နဲ့ Google ဆီပဲ ပို့၊ ပြောတဲ့စာ ဘယ်မှာမှ မသိမ်း
 
-## ⚠️ သိထားရန်
+## သိထားရန်
 
-- **Internet** လိုပါတယ်။ Google Gemini ကို သုံးလို့ပါ။
-- Google က **မြန်မာနိုင်ငံထဲမှာ Gemini API ကို ခွင့်မပြုသေးပါ** ([စာရင်း](https://ai.google.dev/gemini-api/docs/available-regions))။ ပြည်ပမှာ နေသူတွေ ပြဿနာ မရှိပါ။
-- Free API key က **တစ်ရက် အကြိမ်ရေ limit** ရှိပါတယ် ([အသေးစိတ်](docs/GUIDE.md#s12))။
+- **Internet** လိုပါတယ်။ Free API key မှာ **တစ်ရက် limit** ရှိပါတယ် ([အသေးစိတ်](docs/GUIDE.md#s12))။
+- Google က **မြန်မာနိုင်ငံထဲမှာ Gemini API ကို ခွင့်မပြုသေးပါ** ([စာရင်း](https://ai.google.dev/gemini-api/docs/available-regions))။
 
-## 🆘 အကူအညီ
-
-- 📘 [လမ်းညွှန် — ပြဿနာဖြေရှင်းနည်း](docs/GUIDE.md#s14) · [FAQ](docs/GUIDE.md#s15)
-- 🐞 [ပြဿနာ တင်ပြရန်](https://github.com/ThecrashO/myanmar-flow/issues/new/choose) (မြန်မာလို ရေးလို့ရ)
-- 💡 [အကြံဉာဏ် ပေးရန်](https://github.com/ThecrashO/myanmar-flow/issues/new/choose)
+**အကူအညီ:** [ပြဿနာဖြေရှင်းနည်း](docs/GUIDE.md#s14) · [FAQ](docs/GUIDE.md#s15) · [ပြဿနာ / အကြံ တင်ရန်](https://github.com/ThecrashO/myanmar-flow/issues/new/choose) (မြန်မာလို ရေးလို့ရ)
 
 ---
 
@@ -71,20 +48,16 @@ Install လုပ်နည်း၊ API key ယူနည်း၊ နေ့စ�
 
 ## English
 
-**Myanmar Flow** is a small Windows tray app for Burmese voice dictation, similar in spirit to Wispr Flow (which doesn't support Burmese).
+**Myanmar Flow** is a small Windows tray app for Burmese voice typing. Hold **Right Ctrl**, speak, release, and the text is pasted into whatever app has focus. Hold **Right Alt** to speak Burmese and get English. Double-tap either key for hands-free dictation.
 
-- Hold **Right Ctrl**, speak, release — the transcript is pasted into the focused app.
-- Hold **Right Alt** to speak Burmese and get English text. Double-tap either key for hands-free dictation (tap again to stop, 5-minute cap).
-- Live mode streams audio to [`gemini-3.5-transcribe-live`](https://ai.google.dev/gemini-api/docs/live-api/live-transcribe) over a WebSocket and shows the words above the pill while you speak; the final transcript is ready ~0.3 s after release. Falls back to batch transcription if streaming fails.
-- Voice shortcuts (say a phrase, get a stored snippet such as an address), personal word fixes, and a dashboard with estimated time saved plus the last 20 dictations (kept in memory only).
-- Batch mode uses Google's [`gemini-3.5-transcribe`](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-transcribe) speech-to-text model with the `my-MM` language hint, plus an optional polish pass (`gemini-3.6-flash`) that fixes misheard words, spelling and punctuation, falling back to the raw transcript if it fails.
-- Bring your own free [Gemini API key](https://aistudio.google.com/apikey); a Burmese setup wizard walks you through it.
-- Transcripts are never written to the log. Checks GitHub for new releases once a day (can be turned off).
-- ⚠️ The Gemini API is only available in [these regions](https://ai.google.dev/gemini-api/docs/available-regions) — Myanmar is currently not one of them.
+It uses your own free [Gemini API key](https://aistudio.google.com/apikey). The Gemini API is [not available in Myanmar](https://ai.google.dev/gemini-api/docs/available-regions) yet.
 
-Full user guide (Burmese): [docs/GUIDE.md](docs/GUIDE.md)
+<details>
+<summary><b>How it works and building from source</b></summary>
 
-### Build from source
+- Streams audio to `gemini-3.5-transcribe-live` and shows the words while you speak; falls back to batch `gemini-3.5-transcribe` (`my-MM`, `en-US`) if streaming fails.
+- Optional clean-up pass with `gemini-3.6-flash` fixes misheard words, spelling and punctuation, then fixes common Burmese look-alikes (၀/ဝ, ၇/ရ, ဥ/ဉ) and mark order.
+- Voice shortcuts, personal word fixes, and a dashboard of time saved. Transcripts are never logged; history stays in memory.
 
 ```bash
 py -m venv .venv
@@ -92,6 +65,8 @@ py -m venv .venv
 .venv\Scripts\pythonw myanmar_flow.py
 ```
 
-`build.bat` builds `dist\MyanmarFlow.exe` with PyInstaller. `installer.iss` builds the installer with [Inno Setup](https://jrsoftware.org/isinfo.php). Pushing a `v*` tag builds both on GitHub Actions and publishes a release.
+`build.bat` builds `dist\MyanmarFlow.exe` with PyInstaller, and `installer.iss` builds the installer with [Inno Setup](https://jrsoftware.org/isinfo.php). Pushing a `v*` tag builds both on GitHub Actions and publishes a release.
 
-License: [MIT](LICENSE)
+</details>
+
+License: [MIT](LICENSE) · Full guide (Burmese): [docs/GUIDE.md](docs/GUIDE.md)
