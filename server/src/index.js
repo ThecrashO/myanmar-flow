@@ -10,6 +10,7 @@
 // else. What people say is never stored or logged.
 
 import { adminPage } from "./admin.js";
+import landingPage from "./landing.html";
 
 const GOOGLE = "https://generativelanguage.googleapis.com";
 const LIVE_PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
@@ -27,7 +28,8 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     try {
-      if (url.pathname === "/") return text("Myanmar Flow server");
+      if (url.pathname === "/") return new Response(landingPage, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
+      if (url.pathname === "/health") return text("Myanmar Flow server");
       if (url.pathname === "/admin") return new Response(adminPage, { headers: { "content-type": "text/html; charset=utf-8" } });
       if (url.pathname.startsWith("/admin/api/")) return await admin(request, env, url);
       if (url.pathname === "/mf/balance") return await balance(request, env);

@@ -45,6 +45,13 @@ Once a server is set, a user can paste a code in the setup wizard (in the same b
 or in Settings → "Myanmar Flow Code". The tray menu shows their minutes left, and the app warns
 them once when fewer than 10 minutes remain.
 
+## The public page
+
+`https://myanmar-flow.thecrasho.com/` is the product page: what the app does, key vs Code
+(with the VPN note), prices, how to start with a Code, FAQ, and contact. Its order form writes
+a ready message and opens Messenger, or copies it for Telegram. Edit it in `src/landing.html`
+and run `npm run deploy`. `/health` answers with plain text for uptime checks.
+
 ## Selling minutes
 
 Open `https://<your address>/admin` and enter the admin token. From there you can:
