@@ -31,7 +31,7 @@
 ## ဘာတွေ လုပ်ပေးလဲ
 
 - **ပြောနေတုန်း စာပေါ်** — key လွှတ်တာနဲ့ စာ ချက်ချင်းဝင်
-- **AI စာပြင်** — အကြားမှားတဲ့ စာလုံး၊ စာလုံးပေါင်း၊ ၊ ။ တွေကို အလိုလို ပြင်
+- **AI စာပြင်** (Settings မှာ ဖွင့်ရန်) — အကြားမှားတဲ့ စာလုံး၊ စာလုံးပေါင်း၊ ၊ ။ တွေကို အလိုလို ပြင်
 - **English ဘာသာပြန်** — မြန်မာလို ပြောပြီး English စာ ထွက်
 - **Shortcut** — "ငါ့လိပ်စာ" လို့ ပြောရင် လိပ်စာအပြည့် ဝင်
 - **Dashboard** — အချိန် ဘယ်လောက် သက်သာလဲ၊ ခုနက ပြောခဲ့တဲ့စာ ပြန်ယူ
@@ -58,7 +58,7 @@ It uses your own free [Gemini API key](https://aistudio.google.com/apikey). The 
 <summary><b>How it works and building from source</b></summary>
 
 - Streams audio to `gemini-3.5-transcribe-live` and shows the words while you speak; falls back to batch `gemini-3.5-transcribe` (`my-MM`, `en-US`) if streaming fails.
-- Optional clean-up pass with `gemini-3.6-flash` fixes misheard words, spelling and punctuation, then fixes common Burmese look-alikes (၀/ဝ, ၇/ရ, ဥ/ဉ) and mark order.
+- Optional clean-up pass (off by default, to save the free quota) with `gemini-3.6-flash` fixes misheard words, spelling and punctuation, then fixes common Burmese look-alikes (၀/ဝ, ၇/ရ, ဥ/ဉ) and mark order.
 - Voice shortcuts, personal word fixes, and a dashboard of time saved. Transcripts are never logged; history stays in memory.
 
 ```bash

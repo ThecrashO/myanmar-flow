@@ -98,7 +98,7 @@ DEFAULT_CONFIG = {
     "min_seconds": 0.4,
     "sounds": True,
     # Second pass with a text model to fix misheard words, spelling and punctuation.
-    "polish": True,
+    "polish": False,  # off by default: saves the free daily quota
     "text_model": "gemini-3.6-flash",
     "check_updates": True,
     # Leave the text on the clipboard after pasting, so Ctrl+V still works if the
