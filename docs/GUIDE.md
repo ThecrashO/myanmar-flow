@@ -428,7 +428,7 @@ Tray icon → Right-click → **Settings...**
 | **Hotkey (ဖိထားပြီးပြောရန်)** | မြန်မာလို ရိုက်ဖို့ key | `right ctrl` |
 | **English ဘာသာပြန် hotkey** | English ထွက်ဖို့ key။ မလိုရင် ဗလာ ထားပါ | `right alt` |
 | **Speech model** | အသံကို စာပြောင်းတဲ့ AI | `gemini-3.5-transcribe` |
-| **AI စာပြင် model** | စာကို ပြန်ပြင်ပေးတဲ့ AI | `gemini-3.6-flash` |
+| **AI စာပြင် model** | စာကို ပြန်ပြင်ပေးတဲ့ AI | `gemini-3.8-flash` |
 | **Language codes** | ပြောမယ့် ဘာသာ | `my-MM` (မြန်မာ) |
 | **Mode** | `smart` = သပ်ရပ်အောင် ပြင်ပေး / `verbatim` = ပြောသမျှ အတိအကျ | `smart` |
 | **Custom words** | မကြာခဏ မှားတဲ့ နာမည်/စကားလုံးတွေ (`,` နဲ့ ခြားပါ) | ဗလာ |
