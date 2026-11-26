@@ -63,9 +63,12 @@ Mac version က Windows version နဲ့ အတူတူပါပဲ။ မတ�
 
 1. [Release စာမျက်နှာ](https://github.com/ThecrashO/myanmar-flow/releases/latest) ကနေ ကိုယ့် Mac နဲ့ ကိုက်တဲ့ zip (**`MyanmarFlow-mac.zip`** ဒါမှမဟုတ် Intel Mac ဆိုရင် **`MyanmarFlow-mac-intel.zip`**) ကို download လုပ်ပါ
 2. Zip ကို နှစ်ချက်နှိပ်ဖွင့်ပါ → ထွက်လာတဲ့ **MyanmarFlow** ကို **Applications** folder ထဲ ဆွဲထည့်ပါ
-3. ပထမဆုံးအကြိမ် ဖွင့်တဲ့အခါ **Right-click → Open → Open** ကို နှိပ်ပါ
-   - "Apple could not verify..." ပေါ်ရင် **System Settings → Privacy & Security** ကိုသွားပြီး အောက်နားက **Open Anyway** ကိုနှိပ်ပါ
+3. ပထမဆုံးအကြိမ် ဖွင့်တဲ့အခါ **"MyanmarFlow" Not Opened / Apple could not verify...** ပေါ်ပါမယ်
+   - **Move to Trash** မနှိပ်ပါနဲ့၊ **Done** ကို နှိပ်ပါ
+   - ဘယ်ဘက်အပေါ်ထောင့်က Apple မီနူး → **System Settings → Privacy & Security** ကိုသွားပြီး အောက်ဆုံးနားက **Open Anyway** ကိုနှိပ်ပါ
+   - Mac password (ဒါမှမဟုတ် Touch ID) ထည့်ပြီး **Open** ကို နှိပ်ပါ။ တစ်ခါပဲ လုပ်ရပါတယ်
    - (Apple ကို ပိုက်ဆံပေးပြီး လက်မှတ် မထိုးထားလို့ ပေါ်တာပါ။ app က ဘေးကင်းပါတယ်)
+   - **Open Anyway** မပေါ်ရင် Terminal မှာ `xattr -dr com.apple.quarantine /Applications/MyanmarFlow.app` ကို run ပြီး app ကို ပြန်ဖွင့်ပါ
 
 ### ခွင့်ပြုချက် ၂ ခု ပေးရပါမယ်
 

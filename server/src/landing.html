@@ -123,13 +123,19 @@
 
   /* steps */
   .steps { counter-reset: s; display: grid; gap: 14px; margin: 36px 0 0; padding: 0; max-width: 760px; }
-  .steps li > div { min-width: 0; }
-  .steps li { list-style: none; counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start;
+  .steps > li > div { min-width: 0; }
+  .steps > li { list-style: none; counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start;
               background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
-  .steps li::before { content: counter(s); width: 44px; height: 44px; border-radius: 12px; background: var(--accent); color: #fff;
+  .steps > li::before { content: counter(s); width: 44px; height: 44px; border-radius: 12px; background: var(--accent); color: #fff;
                       display: grid; place-items: center; font: 700 17px "Inter", sans-serif; }
-  .steps b { display: block; }
-  .steps span { color: var(--muted); font-size: 15px; }
+  .steps > li > div > b { display: block; }
+  .steps > li > div > span { color: var(--muted); font-size: 15px; }
+  .macfix { margin-top: 14px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px;
+            padding: 14px 16px; background: var(--tint); color: var(--text); font-size: 14.5px; }
+  .macfix > b { display: block; margin-bottom: 6px; }
+  .macfix ol { margin: 0; padding-left: 20px; }
+  .macfix li { margin: 5px 0; }
+  .macfix .small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 8px; }
   code { font: 600 14px ui-monospace, Consolas, monospace; background: var(--accent-soft); color: var(--accent); padding: 2px 7px; border-radius: 6px; }
 
   /* faq */
@@ -442,7 +448,18 @@
         Windows: <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-Setup.exe">MyanmarFlow-Setup.exe</a> ·
         Mac (M1/M2/M3/M4): <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-mac.zip">MyanmarFlow-mac.zip</a> ·
         Mac (Intel): <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-mac-intel.zip">MyanmarFlow-mac-intel.zip</a><br>
-        Windows မှာ အပြာရောင် box ပေါ်ရင် <b>More info → Run anyway</b> ကို နှိပ်ပါ။</span></div></li>
+        Windows မှာ အပြာရောင် box ပေါ်ရင် <b>More info → Run anyway</b> ကို နှိပ်ပါ။</span>
+        <div class="macfix">
+          <b>Mac မှာ "MyanmarFlow Not Opened" ပေါ်ရင်</b>
+          <ol>
+            <li>Zip ကိုဖွင့်ပြီး <b>MyanmarFlow</b> ကို <b>Applications</b> folder ထဲ ဆွဲထည့်ပါ</li>
+            <li>"Apple could not verify…" box ပေါ်ရင် <b>Move to Trash</b> မနှိပ်ပါနဲ့၊ <b>Done</b> ကို နှိပ်ပါ</li>
+            <li>ဘယ်ဘက်အပေါ်ထောင့်က Apple မီနူး → <b>System Settings → Privacy &amp; Security</b> ကိုသွားပြီး အောက်ဆုံးနားက <b>Open Anyway</b> ကို နှိပ်ပါ</li>
+            <li>Mac password (ဒါမှမဟုတ် Touch ID) ထည့်ပြီး <b>Open</b> ကို နှိပ်ပါ</li>
+            <li>App ပွင့်လာရင် <b>Privacy &amp; Security → Accessibility</b> မှာ <b>MyanmarFlow</b> ကို ဖွင့်ပေးပြီး app ကို ပိတ်ပြီး ပြန်ဖွင့်ပါ (key ဖိတာ သိဖို့)။ Mic ကို ပထမဆုံး ပြောတဲ့အခါ <b>Allow</b> နှိပ်ပါ</li>
+          </ol>
+          <span class="small">တစ်ခါပဲ လုပ်ရပါတယ်။ Apple ကို ပိုက်ဆံပေးပြီး လက်မှတ် မထိုးထားလို့ ပေါ်တာပါ၊ app က ဘေးကင်းပါတယ် (code အားလုံး GitHub မှာ ကြည့်လို့ရ)။</span>
+        </div></div></li>
       <li><div><b>Code ကို ထည့်ပါ</b><span>Setup wizard ပွင့်လာရင် key ထည့်တဲ့ အကွက်ထဲမှာ Code ကို Paste လုပ်ပြီး <b>စစ်ဆေးမယ်</b> နှိပ်ပါ။ (Settings → Myanmar Flow Code မှာလည်း ထည့်လို့ရ)</span></div></li>
       <li><div><b>Mic စမ်းပြီး စပြောပါ</b><span>"မင်္ဂလာပါ" လို့ ပြောကြည့်ပါ။ စာပေါ်လာရင် အဆင်သင့် ဖြစ်ပါပြီ။</span></div></li>
       <li><div><b>လက်ကျန် ကြည့်ပြီး ငွေဖြည့်ပါ</b><span>Tray (Mac မှာ menu bar) icon ကို နှိပ်ရင် <b>⏳ လက်ကျန်</b> ကို မြင်ရပါမယ်။ ၁၀ မိနစ်အောက် ရောက်ရင် app က အသိပေးပါမယ်။</span></div></li>
