@@ -177,6 +177,15 @@ r = requests.get(BASE + "/mf/balance", headers=H)
 check("disabled code -> 403 mf_code_disabled", r.status_code == 403 and "mf_code_disabled" in r.text)
 ledger = admin("GET", f"/codes/{code}/ledger").json()["ledger"]
 print("ledger:", [(e["kind"], e["ms"]) for e in ledger])
-admin("POST", f"/codes/{empty}/disabled", json={"disabled": True})
+
+# delete: the code, its history and its balance are gone
+for c in (code, empty):
+    check(f"delete {c}", admin("DELETE", f"/codes/{c}").status_code == 200)
+left = {row["code"] for row in admin("GET", "/codes").json()["codes"]}
+check("deleted codes gone from the list", code not in left and empty not in left)
+r = requests.get(BASE + "/mf/balance", headers=H)
+check("deleted code -> mf_code_invalid", "mf_code_invalid" in r.text, f"{r.status_code} {r.text[:80]}")
+check("deleted code has no history", admin("GET", f"/codes/{code}/ledger").status_code == 404)
+check("deleting twice -> 404", admin("DELETE", f"/codes/{code}").status_code == 404)
 print("ALL PASS" if ok else "SOME FAILED")
 sys.exit(0 if ok else 1)

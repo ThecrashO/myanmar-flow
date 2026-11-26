@@ -20,6 +20,8 @@ export const adminPage = `<!doctype html>
   button { font:inherit; color:inherit; background:transparent; border:1px solid var(--line); border-radius:8px; padding:6px 12px; cursor:pointer; }
   button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
   button:hover { border-color:var(--muted); }
+  button.danger { color:var(--bad); }
+  button.danger:hover { border-color:var(--bad); }
   table { width:100%; border-collapse:collapse; font-size:14px; }
   th, td { text-align:left; padding:8px 6px; border-top:1px solid var(--line); vertical-align:middle; }
   th { color:var(--muted); font-weight:500; border-top:0; }
@@ -73,7 +75,7 @@ const mins = (ms) => (ms / 60000).toFixed(1).replace(/\\.0$/, "");
 const when = (iso) => iso ? new Date(iso).toLocaleString() : "—";
 
 function cell(row, text, cls) { const td = row.insertCell(); td.textContent = text; if (cls) td.className = cls; return td; }
-function button(td, label, onClick) { const b = document.createElement("button"); b.textContent = label; b.onclick = onClick; td.append(b, " "); }
+function button(td, label, onClick, cls) { const b = document.createElement("button"); b.textContent = label; b.onclick = onClick; if (cls) b.className = cls; td.append(b, " "); }
 
 async function load() {
   const { codes } = await api("/codes");
@@ -101,6 +103,12 @@ async function load() {
       try { await api("/codes/" + c.code + "/disabled", { method: "POST", body: JSON.stringify({ disabled: !c.disabled }) }); load(); }
       catch (e) { say(e.message, true); }
     });
+    button(actions, "ဖျက်", async () => {
+      const who = c.note ? " (" + c.note + ")" : "";
+      if (!confirm(c.code + who + " ကို အပြီးဖျက်မလား?\\n\\nကျန်တဲ့ " + mins(c.balance_ms) + " မိနစ်နဲ့ မှတ်တမ်းတွေ ပါ ပျက်သွားမယ်။ ပြန်ယူလို့ မရပါ။ ဒီ Code သုံးနေသူ ဆက်သုံးလို့ မရတော့ပါ။")) return;
+      try { await api("/codes/" + c.code, { method: "DELETE" }); if (fresh === c.code) fresh = null; say(c.code + " ကို ဖျက်ပြီးပါပြီ"); load(); }
+      catch (e) { say(e.message, true); }
+    }, "danger");
     if (c.disabled) cell(r, "ပိတ်ထား", "off");
   }
 }

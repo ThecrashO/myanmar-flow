@@ -60,6 +60,8 @@ Open `https://<your address>/admin` and enter the admin token. From there you ca
 - **Code အသစ် ထုတ်မယ်**: make a code with some minutes. Copy it and send it to the buyer.
 - **+ မိနစ်**: add minutes when they top up. They keep the same code.
 - **ပိတ်**: switch a code off (and back on).
+- **ဖျက်**: delete a code for good, with its minutes and history. It asks first and can't be
+  undone; the app then tells that user the code is wrong. Use **ပိတ်** if you might want it back.
 
 Suggested packs (cost is about 45 Ks a minute at $1 = 5,000 Ks):
 
@@ -102,7 +104,7 @@ root with the app's Python:
 
 Both use the live server by default. To test a local `npm run dev` instead, pass its address,
 for example `http://127.0.0.1:8787`. They make small test codes (named `server_test` and
-`app_test`) and switch them off at the end. `speech.wav` is an 8.9-second English sentence.
+`app_test`) and delete them at the end. `speech.wav` is an 8.9-second English sentence.
 
 ## Things to know
 

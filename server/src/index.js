@@ -344,6 +344,14 @@ async function admin(request, env, url) {
     await env.DB.prepare("UPDATE codes SET disabled = ?1 WHERE code = ?2").bind(body.disabled ? 1 : 0, code).run();
     return json({ ok: true });
   }
+  if (parts.length === 4 && request.method === "DELETE") {
+    // Gone for good, history included. The app then says the code is wrong.
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM ledger WHERE code = ?").bind(code),
+      env.DB.prepare("DELETE FROM codes WHERE code = ?").bind(code),
+    ]);
+    return json({ ok: true });
+  }
   if (parts[4] === "ledger" && request.method === "GET") {
     const { results } = await env.DB.prepare("SELECT at, kind, ms FROM ledger WHERE code = ? ORDER BY id DESC LIMIT 100")
       .bind(code).all();

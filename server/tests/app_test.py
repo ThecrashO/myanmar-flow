@@ -75,6 +75,8 @@ for name, fn in [("batch", lambda c: mf.transcribe(c, wav)),
 own = dict(cfg, pro_code="")
 check("own key mode unchanged", mf.api_base(own) == mf.GOOGLE_API and "x-goog-api-key" in mf.api_headers(own))
 for c in (code, empty):
-    requests.post(f"{BASE}/admin/api/codes/{c}/disabled", headers=ADMIN, json={"disabled": True})
+    requests.delete(f"{BASE}/admin/api/codes/{c}", headers=ADMIN)
+_, problem = mf.code_balance(code)
+check("deleted code message", problem == "Code မှားနေပါတယ် - Settings မှာစစ်ပါ", problem)
 print("ALL PASS" if ok else "SOME FAILED")
 sys.exit(0 if ok else 1)
