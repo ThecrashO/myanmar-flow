@@ -136,6 +136,10 @@
   .macfix ol { margin: 0; padding-left: 20px; }
   .macfix li { margin: 5px 0; }
   .macfix .small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 8px; }
+  .safe { display: flex; gap: 10px; align-items: flex-start; background: color-mix(in srgb, var(--ok) 12%, transparent);
+          color: var(--text); border-radius: 10px; padding: 10px 12px; margin: 4px 0 12px; font-size: 14px; }
+  .safe svg { width: 18px; height: 18px; flex: none; margin-top: 3px; color: var(--ok); }
+  .safe b { color: var(--ok); }
   code { font: 600 14px ui-monospace, Consolas, monospace; background: var(--accent-soft); color: var(--accent); padding: 2px 7px; border-radius: 6px; }
 
   /* faq */
@@ -448,9 +452,11 @@
         Windows: <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-Setup.exe">MyanmarFlow-Setup.exe</a> ·
         Mac (M1/M2/M3/M4): <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-mac.zip">MyanmarFlow-mac.zip</a> ·
         Mac (Intel): <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-mac-intel.zip">MyanmarFlow-mac-intel.zip</a><br>
-        Windows မှာ အပြာရောင် box ပေါ်ရင် <b>More info → Run anyway</b> ကို နှိပ်ပါ။</span>
+        Windows မှာ အပြာရောင် box ပေါ်ရင် <b>More info → Run anyway</b> ကို နှိပ်ပါ (သတိပေးချက်ပဲပါ၊ ဘာမှ မဖြစ်ပါဘူး)။</span>
         <div class="macfix">
           <b>Mac မှာ "MyanmarFlow Not Opened" ပေါ်ရင်</b>
+          <div class="safe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            <div><b>စိတ်မပူပါနဲ့ — ဒါက သတိပေးချက်ပဲပါ။</b> App မှာ ပြဿနာရှိလို့ ပေါ်တာ မဟုတ်ပါဘူး။ Apple ကို တစ်နှစ် $99 ပေးပြီး စစ်ဆေးခိုင်း (notarize) မထားတဲ့ app တိုင်းမှာ ဒီစာ ပေါ်ပါတယ်။ <b>Open Anyway</b> နှိပ်လို့ ကိုယ့် Mac ကို ဘာမှ မဖြစ်စေပါဘူး။</div></div>
           <ol>
             <li>Zip ကိုဖွင့်ပြီး <b>MyanmarFlow</b> ကို <b>Applications</b> folder ထဲ ဆွဲထည့်ပါ</li>
             <li>"Apple could not verify…" box ပေါ်ရင် <b>Move to Trash</b> မနှိပ်ပါနဲ့၊ <b>Done</b> ကို နှိပ်ပါ</li>
@@ -458,7 +464,7 @@
             <li>Mac password (ဒါမှမဟုတ် Touch ID) ထည့်ပြီး <b>Open</b> ကို နှိပ်ပါ</li>
             <li>App ပွင့်လာရင် <b>Privacy &amp; Security → Accessibility</b> မှာ <b>MyanmarFlow</b> ကို ဖွင့်ပေးပြီး app ကို ပိတ်ပြီး ပြန်ဖွင့်ပါ (key ဖိတာ သိဖို့)။ Mic ကို ပထမဆုံး ပြောတဲ့အခါ <b>Allow</b> နှိပ်ပါ</li>
           </ol>
-          <span class="small">တစ်ခါပဲ လုပ်ရပါတယ်။ Apple ကို ပိုက်ဆံပေးပြီး လက်မှတ် မထိုးထားလို့ ပေါ်တာပါ၊ app က ဘေးကင်းပါတယ် (code အားလုံး GitHub မှာ ကြည့်လို့ရ)။</span>
+          <span class="small">တစ်ခါပဲ လုပ်ရပါတယ်။ နောက်ပိုင်း ပုံမှန်အတိုင်း ပွင့်ပါမယ်။ (<a href="#safe" onclick="document.getElementById('safe').open = true">ဘာလို့ ဒီစာ ပေါ်တာလဲ</a>)</span>
         </div></div></li>
       <li><div><b>Code ကို ထည့်ပါ</b><span>Setup wizard ပွင့်လာရင် key ထည့်တဲ့ အကွက်ထဲမှာ Code ကို Paste လုပ်ပြီး <b>စစ်ဆေးမယ်</b> နှိပ်ပါ။ (Settings → Myanmar Flow Code မှာလည်း ထည့်လို့ရ)</span></div></li>
       <li><div><b>Mic စမ်းပြီး စပြောပါ</b><span>"မင်္ဂလာပါ" လို့ ပြောကြည့်ပါ။ စာပေါ်လာရင် အဆင်သင့် ဖြစ်ပါပြီ။</span></div></li>
@@ -485,6 +491,8 @@
       <p>ပုံမှန်ပြောတဲ့ စကားကို အတော်လေး မှန်ပါတယ်။ နာမည်လို အမြဲမှားတဲ့ စာလုံးတွေကို "စကားလုံးနဲ့ Shortcut" မှာ တစ်ခါ ပြင်ထားရင် နောက်ပိုင်း အမြဲမှန်ပါမယ်။ Code မဝယ်ခင် ကိုယ်ပိုင် key နဲ့ အခမဲ့ စမ်းကြည့်လို့ ရပါတယ်။</p></details>
     <details><summary>ဘယ်စက်တွေမှာ သုံးလို့ရလဲ</summary>
       <p>Windows 10/11 နဲ့ macOS 14 (Sonoma) နောက်ပိုင်း Mac တွေပါ — Apple Silicon (M1–M4) ရော Intel Mac ရော ရပါတယ်။ ဖုန်းမှာတော့ မရသေးပါ။</p></details>
+    <details id="safe"><summary>Install လုပ်တုန်း သတိပေးစာ ပေါ်တာ အန္တရာယ်ရှိလား</summary>
+      <p>မရှိပါဘူး၊ သတိပေးချက်ပဲပါ။ Mac မှာ "Apple could not verify…"၊ Windows မှာ "Windows protected your PC" ဆိုတဲ့ စာက Apple နဲ့ Microsoft ကို ပိုက်ဆံပေးပြီး လက်မှတ် မထိုးထားတဲ့ app တိုင်းမှာ ပေါ်တာပါ။ App ထဲမှာ virus တွေ့လို့ ပြတာ မဟုတ်ပါဘူး။ Myanmar Flow ရဲ့ code အားလုံးကို <a href="https://github.com/ThecrashO/myanmar-flow">GitHub</a> မှာ ဘယ်သူမဆို ကြည့်လို့ရပြီး Windows နဲ့ Mac app တွေကိုလည်း အဲဒီ code ကနေ GitHub ပေါ်မှာ တိုက်ရိုက် build လုပ်ထားတာပါ။ Mac မှာ <b>Done → Open Anyway</b>၊ Windows မှာ <b>More info → Run anyway</b> ကို နှိပ်ရုံပါပဲ။ တစ်ခါပဲ လုပ်ရပါတယ်။</p></details>
   </div>
 </section>
 
