@@ -28,7 +28,9 @@
 | စာရှည် လက်မလိုဘဲ | Key **၂ ချက်** နှိပ် → ပြော → **၁ ချက်** နှိပ်ရင် ရပ် |
 | Settings / အကူအညီ | နာရီဘေးက icon ကို **Right-click** |
 
-> 🍎 **Mac** — `MyanmarFlow-mac.zip` ကို download လုပ်ပါ (Intel Mac ဆိုရင် `MyanmarFlow-mac-intel.zip`)။ Key က **ညာ `Option`** (English က **ညာ `Command`**)။ [Mac လမ်းညွှန် →](docs/GUIDE.md#mac)
+> 🍎 **Mac** — `MyanmarFlow-mac.zip` ကို download လုပ်ပါ (Intel Mac ဆိုရင် `MyanmarFlow-mac-intel.zip`)။ ပထမဆုံးဖွင့်တဲ့အခါ "Apple could not verify…" ပေါ်ရင် **Move to Trash** မနှိပ်ဘဲ **Done** နှိပ် → **System Settings → Privacy & Security → Open Anyway**။ Key က **ညာ `Option`** (English က **ညာ `Command`**)။ [Mac လမ်းညွှန် →](docs/GUIDE.md#mac)
+
+> 🛡️ **သတိပေးစာ ပေါ်လာရင် စိတ်မပူပါနဲ့ — သတိပေးချက်ပဲဖြစ်ပြီး ဘာမှ မဖြစ်စေပါဘူး။** Windows ရဲ့ အပြာရောင် box နဲ့ Mac ရဲ့ "Apple could not verify…" က Apple နဲ့ Microsoft ကို ပိုက်ဆံပေးပြီး လက်မှတ်မထိုးထားတဲ့ app တိုင်းမှာ ပေါ်တာပါ။ App ထဲမှာ virus တွေ့လို့ ပြတာ မဟုတ်ပါဘူး။ Code အားလုံး ဒီ repo မှာ ကြည့်လို့ရပြီး app တွေကိုလည်း ဒီ code ကနေ GitHub ပေါ်မှာ တိုက်ရိုက် build လုပ်ထားတာပါ ([release workflow](.github/workflows/release.yml))။ တစ်ခါပဲ ခွင့်ပြုရပါတယ်။
 
 ## ဘာတွေ လုပ်ပေးလဲ
 
@@ -53,6 +55,8 @@
 ## English
 
 **Myanmar Flow** is a small tray / menu-bar app for Burmese voice typing on Windows and macOS (Apple Silicon and Intel). Hold **Right Ctrl** (Mac: **Right Option**), speak, release, and the text is pasted into whatever app has focus. Hold **Right Alt** (Mac: **Right Command**) to speak Burmese and get English. Double-tap either key for hands-free dictation. On a Mac, allow Microphone and Accessibility when asked.
+
+**First launch shows a warning. It's only a warning and does no harm.** The app isn't paid-signed by Microsoft or notarized by Apple, so Windows shows a blue SmartScreen box and macOS says "Apple could not verify…". Nothing was found in the app; every unsigned app gets this. All the code is in this repo, and the installers are built from it on GitHub Actions ([release workflow](.github/workflows/release.yml)). Windows: **More info → Run anyway**. Mac: **Done**, then **System Settings → Privacy & Security → Open Anyway**. You only do this once.
 
 It uses your own free [Gemini API key](https://aistudio.google.com/apikey). The Gemini API is [not available in Myanmar](https://ai.google.dev/gemini-api/docs/available-regions) yet, so inside Myanmar an own key needs a VPN. A Myanmar Flow Code works without one.
 
