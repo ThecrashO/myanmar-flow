@@ -134,4 +134,15 @@ jobs:
             - **MyanmarFlow-mac.zip** — Mac (M1, M2, M3, M4 ...) အတွက် / macOS, Apple Silicon
             - **MyanmarFlow-mac-intel.zip** — Intel Mac အတွက် / macOS, Intel
 
+            ## ပထမဆုံးဖွင့်တဲ့အခါ သတိပေးစာ ပေါ်ရင် / A warning on first launch
+
+            🛡️ **သတိပေးချက်ပဲဖြစ်ပြီး ဘာမှ မဖြစ်စေပါဘူး။** Apple နဲ့ Microsoft ကို ပိုက်ဆံပေးပြီး လက်မှတ်မထိုးထားတဲ့ app တိုင်းမှာ ပေါ်တာပါ၊ virus တွေ့လို့ ပြတာ မဟုတ်ပါဘူး။ ဒီ file တွေကို repo ထဲက code ကနေ GitHub Actions ပေါ်မှာ တိုက်ရိုက် build လုပ်ထားတာပါ။ တစ်ခါပဲ ခွင့်ပြုရပါတယ်။
+
+            **It's only a warning and does no harm.** The app isn't paid-signed by Microsoft or notarized by Apple, so every first launch of an unsigned app shows it; nothing was found in the app. These files are built from this repo's code on GitHub Actions. You only allow it once.
+
+            - **Windows** — အပြာရောင် box ပေါ်ရင် **More info → Run anyway** / Blue box: **More info → Run anyway**
+            - **Mac** — "Apple could not verify…" ပေါ်ရင် **Move to Trash** မနှိပ်ဘဲ **Done** → **System Settings → Privacy & Security → Open Anyway** → password ထည့်ပြီး **Open** / Click **Done** (not Move to Trash), then **System Settings → Privacy & Security → Open Anyway**, then **Open**
+
+            Mac ဖွင့်နည်း အသေးစိတ် / Mac steps: https://myanmar-flow.thecrasho.com/#mac
+
             Setup လမ်းညွှန်: https://github.com/ThecrashO/myanmar-flow#readme
