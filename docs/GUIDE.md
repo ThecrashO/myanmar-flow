@@ -165,7 +165,7 @@ Google က Gemini API ကို [သုံးခွင့်ပြုထား�
    - ① box ထဲက **More info** ဆိုတဲ့ စာကို နှိပ်ပါ
    - ② ပေါ်လာတဲ့ **Run anyway** ခလုတ်ကို နှိပ်ပါ
 
-   > 🤔 **ဘာလို့ ဒီ box ပေါ်တာလဲ?** Myanmar Flow က အခမဲ့ open-source program ဖြစ်လို့ Microsoft ဆီကနေ ပိုက်ဆံပေးပြီး certificate မဝယ်ထားလို့ပါ။ Virus မဟုတ်ပါဘူး — code အားလုံးကို GitHub မှာ အများပြည်သူ ကြည့်လို့ရပါတယ်။
+   🤔 **ဘာလို့ ဒီ box ပေါ်တာလဲ?** Myanmar Flow က အခမဲ့ open-source program ဖြစ်လို့ Microsoft ဆီကနေ ပိုက်ဆံပေးပြီး certificate မဝယ်ထားလို့ပါ။ Virus မဟုတ်ပါဘူး — code အားလုံးကို GitHub မှာ အများပြည်သူ ကြည့်လို့ရပါတယ်။
 
 3. Install window မှာ:
    - ✅ **Start Myanmar Flow when Windows starts** — အမှန်ခြစ်ထားပါ (ကွန်ပျူတာဖွင့်တာနဲ့ အလိုလို ပွင့်လာမယ်)
