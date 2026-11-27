@@ -28,9 +28,21 @@
 | စာရှည် လက်မလိုဘဲ | Key **၂ ချက်** နှိပ် → ပြော → **၁ ချက်** နှိပ်ရင် ရပ် |
 | Settings / အကူအညီ | နာရီဘေးက icon ကို **Right-click** |
 
-> 🍎 **Mac** — `MyanmarFlow-mac.zip` ကို download လုပ်ပါ (Intel Mac ဆိုရင် `MyanmarFlow-mac-intel.zip`)။ ပထမဆုံးဖွင့်တဲ့အခါ "Apple could not verify…" ပေါ်ရင် **Move to Trash** မနှိပ်ဘဲ **Done** နှိပ် → **System Settings → Privacy & Security → Open Anyway**။ Key က **ညာ `Option`** (English က **ညာ `Command`**)။ [Mac လမ်းညွှန် →](docs/GUIDE.md#mac)
+### 🍎 Mac
 
-> 🛡️ **သတိပေးစာ ပေါ်လာရင် စိတ်မပူပါနဲ့ — သတိပေးချက်ပဲဖြစ်ပြီး ဘာမှ မဖြစ်စေပါဘူး။** Windows ရဲ့ အပြာရောင် box နဲ့ Mac ရဲ့ "Apple could not verify…" က Apple နဲ့ Microsoft ကို ပိုက်ဆံပေးပြီး လက်မှတ်မထိုးထားတဲ့ app တိုင်းမှာ ပေါ်တာပါ။ App ထဲမှာ virus တွေ့လို့ ပြတာ မဟုတ်ပါဘူး။ Code အားလုံး ဒီ repo မှာ ကြည့်လို့ရပြီး app တွေကိုလည်း ဒီ code ကနေ GitHub ပေါ်မှာ တိုက်ရိုက် build လုပ်ထားတာပါ ([release workflow](.github/workflows/release.yml))။ တစ်ခါပဲ ခွင့်ပြုရပါတယ်။
+- `MyanmarFlow-mac.zip` ကို download လုပ်ပါ (Intel Mac ဆိုရင် `MyanmarFlow-mac-intel.zip`)
+- ပထမဆုံးဖွင့်တဲ့အခါ "Apple could not verify…" ပေါ်ရင် **Move to Trash** မနှိပ်ဘဲ **Done** နှိပ်ပါ
+- **System Settings → Privacy & Security** မှာ **Open Anyway** ကို နှိပ်ပါ
+- Key က **ညာ `Option`** (English က **ညာ `Command`**) — [Mac လမ်းညွှန် →](docs/GUIDE.md#mac)
+
+### 🛡️ သတိပေးစာ ပေါ်လာရင် စိတ်မပူပါနဲ့
+
+**သတိပေးချက်ပဲဖြစ်ပြီး ဘာမှ မဖြစ်စေပါဘူး။**
+
+- Windows ရဲ့ အပြာရောင် box နဲ့ Mac ရဲ့ "Apple could not verify…" က Apple နဲ့ Microsoft ကို ပိုက်ဆံပေးပြီး လက်မှတ်မထိုးထားတဲ့ app တိုင်းမှာ ပေါ်တာပါ
+- App ထဲမှာ virus တွေ့လို့ ပြတာ မဟုတ်ပါဘူး
+- Code အားလုံး ဒီ repo မှာ ကြည့်လို့ရပြီး app တွေကိုလည်း ဒီ code ကနေ GitHub ပေါ်မှာ တိုက်ရိုက် build လုပ်ထားတာပါ ([release workflow](.github/workflows/release.yml))
+- တစ်ခါပဲ ခွင့်ပြုရပါတယ်
 
 ## ဘာတွေ လုပ်ပေးလဲ
 
