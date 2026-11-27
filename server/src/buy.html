@@ -137,7 +137,7 @@
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
-  var PRICE = 99, order = null, timer = null;
+  var PRICE = 99, order = null, timer = null, busy = false;
   var ks = function (n) { return Number(n).toLocaleString("en-US") + " Ks"; };
   // Bigger packs last longer; the server uses the same rule.
   var days = function (m) { return m >= 180 ? "၁ နှစ်" : m >= 60 ? "၉၀ ရက်" : "၃၀ ရက်"; };
@@ -256,7 +256,8 @@
   function poll() {
     clearTimeout(timer);
     timer = setTimeout(function () {
-      api("/mf/orders/" + order.id).then(function (o) { order = o; render(); }).catch(function () { poll(); });
+      if (busy) return;  // a screenshot is being checked; its own answer comes next
+      api("/mf/orders/" + order.id).then(function (o) { if (busy) return; order = o; render(); }).catch(function () { poll(); });
     }, order.status === "new" ? 8000 : 5000);
   }
 
@@ -281,11 +282,13 @@
     var file = $("shot").files[0];
     $("shot").value = "";
     if (!file) return;
-    status("wait", '<span class="spin"></span>AI က screenshot ကို စစ်နေပါတယ်…');
+    busy = true;
+    clearTimeout(timer);
+    status("wait", '<span class="spin"></span>AI က screenshot အသစ်ကို စစ်နေပါတယ်…');
     shrink(file).then(function (blob) {
       return api("/mf/orders/" + order.id + "/screenshot", { method: "POST", headers: { "content-type": blob.type || "image/jpeg" }, body: blob });
-    }).then(function (o) { order = o; render(); })
-      .catch(function (e) { status("bad", e.message); });
+    }).then(function (o) { busy = false; order = o; render(); })
+      .catch(function (e) { busy = false; status("bad", e.message); poll(); });
   });
 
   // Codes bought on this phone, newest first, so they're easy to find again here.

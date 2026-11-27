@@ -180,7 +180,7 @@ const RECEIPT_SCHEMA = {
 };
 
 const RECEIPT_PROMPT = `This should be a screenshot of a money transfer made in a Myanmar mobile wallet app (KBZPay, also called KPay, or WavePay). Read it.
-- is_transfer_receipt: true only if it is a transfer result or transaction detail screen from such a wallet.
+- is_transfer_receipt: true only if it is the result or detail screen of ONE transfer from such a wallet. A history list showing several transactions is false.
 - succeeded: true only if it shows the transfer as successful or completed (Burmese wording counts, e.g. အောင်မြင်ပါသည်).
 - wallet: "KBZPay", "WavePay" or "other".
 - amount: the amount transferred, in Kyats, as a plain number (5,941.00 Ks -> 5941). Not the balance and not a fee. 0 if not shown.
@@ -212,10 +212,11 @@ Notification:
 // ---------------------------------------------------------------- screenshots
 
 function receiptProblem(r, order) {
-  if (!r.is_transfer_receipt) return "ဒါ ငွေလွှဲ screenshot မဟုတ်ပါဘူး။ KBZPay / WavePay မှာ ငွေလွှဲပြီးတဲ့ စာမျက်နှာကို screenshot ရိုက်ပြီး ထည့်ပါ။";
+  if (!r.is_transfer_receipt) return "ဒါ ငွေလွှဲ screenshot မဟုတ်ပါဘူး။ ငွေလွှဲပြီးတာနဲ့ ပေါ်လာတဲ့ စာမျက်နှာ (ဒါမှမဟုတ် History ထဲက အဲ့ငွေလွှဲ တစ်ခုကို နှိပ်ပြီး ပေါ်လာတဲ့ အသေးစိတ်) ကို screenshot ရိုက်ပြီး ထည့်ပါ။";
   if (!r.succeeded) return "ငွေလွှဲတာ မအောင်မြင်သေးပုံ ရပါတယ်။ အောင်မြင်ကြောင်း ပြတဲ့ စာမျက်နှာကို ထည့်ပါ။";
   if (Math.round(Number(r.amount)) !== order.amount) {
-    return `Screenshot ထဲမှာ ${ks(r.amount || 0)} Ks ဖြစ်နေပါတယ်။ ဒီ order အတွက် ${ks(order.amount)} Ks အတိအကျ လွှဲရပါမယ်။`;
+    return `Screenshot ထဲမှာ ${ks(r.amount || 0)} Ks ဖြစ်နေပါတယ်။ ဒီ order အတွက် ${ks(order.amount)} Ks အတိအကျ လွှဲရပါမယ်။ ` +
+           "ခုလွှဲထားတဲ့ ငွေလွှဲရဲ့ screenshot (အရင် screenshot အဟောင်း မဟုတ်) ဟုတ်မဟုတ် စစ်ပြီး ပြန်ထည့်ပါ။";
   }
   const phone = digits(r.receiver_phone);
   if (phone.length >= 4 && !phone.endsWith(PAY_TAIL)) return `ငွေလက်ခံသူ နံပါတ် မှားနေပါတယ်။ ${PAY_TO} ကို လွှဲရပါမယ်။`;
@@ -278,6 +279,12 @@ async function screenshot(request, env, url, id) {
     if (reused) {
       await tell(env, `⚠️ သုံးပြီးသား screenshot ကို ပြန်တင်တယ်\n${orderLine(order)}\nTxn ${txn} ကို order ${reused.slice(0, 6)} မှာ သုံးပြီးသား။ Code မပေးပါ။`,
                  { photo: image, type });
+    } else if (receipt.is_transfer_receipt) {
+      // A real-looking receipt the AI turned down: the owner sees it, in case the AI misread it.
+      await tell(env, `⚠️ AI က လက်မခံ — ${ks(order.amount)} Ks\n${orderLine(order)}\nAI ဖတ်တာ: ${ks(receipt.amount || 0)} Ks · ` +
+                      `${receipt.receiver_phone || "နံပါတ် မပါ"} · Txn ${txn || "—"}\nဝယ်သူကို ပြောထားတာ: ${problem}\n\n` +
+                      `AI မှားဖတ်ပြီး ${ks(order.amount)} Ks တကယ်ဝင်ရင် ✅ ကို နှိပ်ပါ။ မဟုတ်ရင် ဘာမှ မလုပ်လည်းရ (ဝယ်သူ ပြန်ထည့်လို့ရ)။`,
+                 { photo: image, type, buttons: [["✅ ငွေရပြီ — Code ပေးမယ်", "ok:" + id]] });
     }
     return json(publicOrder(await getOrder(env, id), url));
   }
