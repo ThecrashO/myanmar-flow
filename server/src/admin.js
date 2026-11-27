@@ -63,6 +63,7 @@ export const adminPage = `<!doctype html>
     <h2>Shop · အလိုလို ရောင်းတာ</h2>
     <p class="muted">AI က screenshot ကို စစ်ပြီး မှန်ရင် Code ကို ချက်ချင်း ပေးပါတယ်။ သံသယရှိရင် "စစ်ရန်" မှာ ထားပြီး Telegram ကို ပို့ပါတယ်။</p>
     <p>Telegram: <span id="tgState" class="muted">—</span> <button id="tgLink">Telegram ချိတ်မယ်</button> <button id="tgTest">စမ်းပို့မယ်</button></p>
+    <p id="tgBox" hidden style="background:var(--soft,#eef3ff);padding:12px 14px;border-radius:10px;word-break:break-all"></p>
     <p class="muted">ဖုန်း notification (မထည့်လည်းရ): <button id="copyPhone">Copy</button> <span id="phoneSeen"></span></p>
     <div class="scroll"><table>
       <thead><tr><th>Order</th><th>မိနစ်</th><th>ငွေ</th><th>အခြေအနေ</th><th>Code</th><th>အချိန်</th><th></th></tr></thead>
@@ -184,12 +185,18 @@ async function loadShop() {
   }
 }
 $("tgLink").onclick = async () => {
-  const tab = window.open("about:blank", "_blank");  // opened now, so pop-up blockers allow it
+  // Shown as a link to tap (on this computer or on the phone), not opened in a pop-up.
   try {
-    const { link } = await api("/shop/telegram", { method: "POST", body: "{}" });
-    if (tab) tab.location = link; else location.href = link;
-    say("Telegram ပွင့်လာရင် START နှိပ်ပါ။ ပြီးရင် ဒီ page ကို refresh လုပ်ပါ။");
-  } catch (e) { if (tab) tab.close(); say(e.message, true); }
+    const { link, bot } = await api("/shop/telegram", { method: "POST", body: "{}" });
+    const box = $("tgBox");
+    box.textContent = "";
+    const a = Object.assign(document.createElement("a"), { href: link, target: "_blank", rel: "noopener", textContent: "👉 @" + bot + " ကို Telegram မှာ ဖွင့်မယ်" });
+    a.style.fontWeight = "700";
+    box.append(a, document.createElement("br"), "ဖွင့်ပြီး START နှိပ်ပါ။ ဖုန်းမှာ ဖွင့်ချင်ရင် ဒီ link ကို ကူးပို့ပါ (တစ်ခါပဲ သုံးလို့ရ):", document.createElement("br"),
+               Object.assign(document.createElement("code"), { textContent: link }));
+    box.hidden = false;
+    say("START နှိပ်ပြီးရင် ဒီ page ကို refresh လုပ်ပါ။");
+  } catch (e) { say(e.message, true); }
 };
 $("tgTest").onclick = async () => {
   try { await api("/shop/telegram/test", { method: "POST", body: "{}" }); say("Telegram ကို စမ်းစာ ပို့ပြီးပါပြီ"); }
