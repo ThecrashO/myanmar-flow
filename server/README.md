@@ -45,22 +45,64 @@ Once a server is set, a user can paste a code in the setup wizard (in the same b
 or in Settings → "Myanmar Flow Code". The tray menu shows their minutes left, and the app warns
 them once when fewer than 10 minutes remain.
 
-## The public page
+## The public page and the shop
 
 `https://myanmar-flow.thecrasho.com/` is the product page: what the app does, key vs Code
-(with the VPN note), prices, how to start with a Code, FAQ, and contact. Its order form writes
-a ready message and opens Telegram with it (and copies it, in case the Telegram app ignores the
-link's text). Edit it in `src/landing.html`
-and run `npm run deploy`. `/health` answers with plain text for uptime checks.
+(with the VPN note), prices, how to start, FAQ, and contact. Edit it in `src/landing.html` and
+run `npm run deploy`. `/health` answers with plain text for uptime checks.
 
-## Selling minutes
+Codes sell themselves at `/buy` (`src/buy.html`, server side in `src/shop.js`), with nobody at
+the till:
+
+1. The buyer picks minutes and gives a name and email (for getting a lost code back). They get
+   an exact amount to pay. Amounts are kept unique among unpaid orders (5,940, then 5,941 ...),
+   so a payment can only belong to one order.
+2. They pay 09 424 469 168 with KBZPay or WavePay and upload the receipt screenshot. Gemini
+   reads it: a finished transfer, the right amount and receiver, and a transaction ID that no
+   other order used. If something is off, the page says what in Burmese.
+3. Your Android phone forwards each wallet notification to the server (MacroDroid, below).
+   Gemini reads that too.
+4. When the screenshot and a real "money received" notification agree, the order is paid: a
+   new code is made (or the buyer's code is topped up) and shown on the page. A screenshot on
+   its own never gives minutes, because screenshots can be edited or reused.
+
+A buyer who lost a code gets it back on `/buy` with their email and the transaction ID from
+their wallet history (both must match). The app's 💳 menu item opens `/buy` with the user's code
+filled in, so a top-up lands in that code. The app's 🎁 button gets a free 5-minute, 7-day trial
+code: one per computer, at most 2 per network and 40 in total a day.
+
+**Code validity:** under 60 minutes 30 days, 60 to 179 minutes 90 days, 180 minutes or more one
+year, and a free trial 7 days. A top-up moves the date to the later of the current one and the
+top-up's own, and revives an expired code with its old minutes. Codes made before expiry
+existed (the ones with no date) never expire.
+
+### Phone setup (once)
+
+On the Android phone that receives the KBZPay / WavePay money:
+
+1. Install **MacroDroid** from the Play Store and allow **notification access** when asked.
+2. **Add macro → Trigger → Notification → Notification received**. Pick the **KBZPay** and
+   **WavePay** apps, with any content.
+3. **Action → Connectivity → HTTP request**: method **POST**, URL = the phone link from the admin
+   page (Shop → **Copy**). For the body, choose plain text and add the notification's title and
+   text from the magic-text (**…**) list.
+4. Save the macro. In the phone's settings, set MacroDroid's battery use to **Unrestricted** so
+   Android doesn't stop it.
+5. Check: the admin page's Shop section shows the time of the last notification it received.
+
+The phone link holds a secret (`PHONE_TOKEN`, set with `npx wrangler secret put PHONE_TOKEN`).
+If it ever leaks, put a new one and update the macro. If the phone is off when someone pays,
+their order waits; once the phone sends the notification it completes by itself. For anything
+stuck, the admin page has a **ငွေရပြီ** button that pays an order by hand.
+
+## Selling minutes by hand
 
 Open `https://<your address>/admin` and enter the admin token. From there you can:
 
 - **Code အသစ် ထုတ်မယ်**: make a code with some minutes. Copy it and send it to the buyer.
-- **အခမဲ့ စမ်း ၅ မိနစ်**: make a free 5-minute trial code (about 225 Ks of Gemini) for the name
-  in the box. Its note starts with `trial:`, and the page warns you if that name already had one.
-  The product page offers one free trial per person; if they like it, top up that same code.
+- **အခမဲ့ စမ်း ၅ မိနစ်**: make a free 5-minute, 7-day trial code (about 225 Ks of Gemini) for the
+  name in the box, for someone without the app's 🎁 button. Its note starts with `trial:`, and the
+  page warns you if that name already had one.
 - **+ မိနစ်**: add minutes when they top up. They keep the same code.
 - **ပိတ်**: switch a code off (and back on).
 - **ဖျက်**: delete a code for good, with its minutes and history. It asks first and can't be
@@ -109,11 +151,12 @@ you hold yourself.
 
 ## Local testing
 
-Make a `.dev.vars` file (it is gitignored) containing the two secrets:
+Make a `.dev.vars` file (it is gitignored) containing the secrets:
 
 ```
 GEMINI_API_KEY=...
 ADMIN_TOKEN=...
+PHONE_TOKEN=...
 ```
 
 Then run:
@@ -137,6 +180,9 @@ root with the app's Python:
 - `server_test.py` checks the server itself: admin login, balances, batch, clean-up and Live
   transcription, what each costs, refused models and prompts, and empty or switched-off codes.
 - `app_test.py` runs the app's own functions with a code, including the Burmese error messages.
+- `shop_test.py` runs the whole shop against a **local** server only (it makes fake receipts and
+  phone notifications): unique amounts, every kind of bad screenshot, matching in either order,
+  top-ups, lost-code recovery, validity, manual approve and free trials. See its first lines.
 
 Both use the live server by default. To test a local `npm run dev` instead, pass its address,
 for example `http://127.0.0.1:8787`. They make small test codes (named `server_test` and

@@ -1,0 +1,3 @@
+ALTER TABLE orders ADD COLUMN name TEXT;
+ALTER TABLE orders ADD COLUMN email TEXT;
+ALTER TABLE codes ADD COLUMN expires_at TEXT;

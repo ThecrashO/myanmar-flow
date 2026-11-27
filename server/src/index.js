@@ -1,4 +1,4 @@
-// Myanmar Flow top-up server (Cloudflare Worker).
+// Myanmar Flow top-up server (Cloudflare Worker). Selling codes is in shop.js.
 //
 // The app talks to this server with a top-up code instead of a Gemini API key. The
 // server checks the code, forwards the request to Google with the owner's key, and
@@ -11,6 +11,10 @@
 
 import { adminPage } from "./admin.js";
 import landingPage from "./landing.html";
+import { LATER_EXPIRY, daysFromNow, fail, json, newCode, noMinutes, normalizeCode, text, validDays } from "./common.js";
+import { shop, shopAdmin } from "./shop.js";
+
+export { normalizeCode };
 
 const GOOGLE = "https://generativelanguage.googleapis.com";
 const LIVE_PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
@@ -22,7 +26,6 @@ const MAX_SESSION_MS = 310_000;     // the app stops recording at 300 s
 const GRACE_MS = 30_000;            // let the last sentence finish when minutes run out
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 const MAX_TEXT_BYTES = 64 * 1024;
-const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
 
 export default {
   async fetch(request, env, ctx) {
@@ -38,6 +41,8 @@ export default {
       if (url.pathname === "/v1beta/interactions" && request.method === "POST") return await batch(request, env, ctx);
       const m = url.pathname.match(/^\/v1beta\/models\/([\w.-]+):generateContent$/);
       if (m && request.method === "POST") return await generate(request, env, ctx, m[1]);
+      const sold = await shop(request, env, url);
+      if (sold) return sold;
       return fail(404, "mf_not_found", "Not found");
     } catch (e) {
       console.error("server error:", e && e.stack ? e.stack : String(e));
@@ -46,46 +51,15 @@ export default {
   },
 };
 
-// ---------------------------------------------------------------- responses
-
-function text(body, status = 200) {
-  return new Response(body, { status, headers: { "content-type": "text/plain; charset=utf-8" } });
-}
-
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
-}
-
-// Same shape as Google's errors, so the app's error handling reads both. The status
-// word (mf_...) is what the app matches on.
-function fail(status, word, message) {
-  return json({ error: { code: status, status: word, message } }, status);
-}
-
-const noMinutes = () => fail(402, "mf_no_minutes", "No minutes left on this code");
-
-// ---------------------------------------------------------------- codes
-
-export function normalizeCode(raw) {
-  const c = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (c.length !== 10 || !c.startsWith("MF")) return null;
-  return `MF-${c.slice(2, 6)}-${c.slice(6)}`;
-}
-
-function newCode() {
-  const bytes = crypto.getRandomValues(new Uint8Array(8));
-  const chars = [...bytes].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
-  return `MF-${chars.slice(0, 4)}-${chars.slice(4)}`;
-}
-
 // The code's row, or an error response to return.
 async function account(request, env) {
   const auth = request.headers.get("authorization") || "";
   const code = normalizeCode(auth.replace(/^Bearer\s+/i, ""));
   if (!code) return { err: fail(401, "mf_code_invalid", "Invalid code") };
-  const row = await env.DB.prepare("SELECT code, balance_ms, disabled FROM codes WHERE code = ?").bind(code).first();
+  const row = await env.DB.prepare("SELECT code, balance_ms, disabled, expires_at FROM codes WHERE code = ?").bind(code).first();
   if (!row) return { err: fail(401, "mf_code_invalid", "Invalid code") };
   if (row.disabled) return { err: fail(403, "mf_code_disabled", "This code is turned off") };
+  if (row.expires_at && row.expires_at < new Date().toISOString()) return { err: fail(403, "mf_code_expired", "This code has expired; top it up to use it again") };
   return { row };
 }
 
@@ -103,7 +77,7 @@ async function charge(env, code, ms, kind) {
 async function balance(request, env) {
   const { row, err } = await account(request, env);
   if (err) return err;
-  return json({ seconds: Math.max(0, Math.floor(row.balance_ms / 1000)) });
+  return json({ seconds: Math.max(0, Math.floor(row.balance_ms / 1000)), expires_at: row.expires_at || null });
 }
 
 // ---------------------------------------------------------------- audio length
@@ -305,10 +279,11 @@ async function admin(request, env, url) {
   const parts = url.pathname.split("/").filter(Boolean); // admin, api, codes, [code], [action]
   const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
 
+  if (parts[2] === "shop") return await shopAdmin(request, env, url, parts);
   if (parts[2] !== "codes") return fail(404, "mf_not_found", "Not found");
   if (parts.length === 3 && request.method === "GET") {
     const { results } = await env.DB.prepare(
-      "SELECT code, note, balance_ms, used_ms, disabled, created_at, last_used_at FROM codes ORDER BY created_at DESC",
+      "SELECT code, note, balance_ms, used_ms, disabled, created_at, last_used_at, expires_at FROM codes ORDER BY created_at DESC",
     ).all();
     return json({ codes: results });
   }
@@ -317,12 +292,13 @@ async function admin(request, env, url) {
     if (!(minutes >= 0 && minutes <= 100000)) return fail(400, "mf_bad_minutes", "Minutes must be 0-100000");
     const code = newCode();
     const ms = Math.round(minutes * 60000);
+    const expires = daysFromNow(Number(body.days) > 0 ? Math.min(Number(body.days), 3650) : validDays(minutes));
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO codes (code, note, balance_ms, created_at) VALUES (?1, ?2, ?3, ?4)")
-        .bind(code, String(body.note || "").slice(0, 200), ms, now),
+      env.DB.prepare("INSERT INTO codes (code, note, balance_ms, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)")
+        .bind(code, String(body.note || "").slice(0, 200), ms, now, expires),
       env.DB.prepare("INSERT INTO ledger (code, at, kind, ms) VALUES (?1, ?2, 'topup', ?3)").bind(code, now, ms),
     ]);
-    return json({ code, balance_ms: ms }, 201);
+    return json({ code, balance_ms: ms, expires_at: expires }, 201);
   }
 
   const code = normalizeCode(decodeURIComponent(parts[3] || ""));
@@ -335,7 +311,8 @@ async function admin(request, env, url) {
     if (!(minutes > 0 && minutes <= 100000)) return fail(400, "mf_bad_minutes", "Minutes must be 1-100000");
     const ms = Math.round(minutes * 60000);
     await env.DB.batch([
-      env.DB.prepare("UPDATE codes SET balance_ms = balance_ms + ?1 WHERE code = ?2").bind(ms, code),
+      env.DB.prepare(`UPDATE codes SET balance_ms = balance_ms + ?, expires_at = ${LATER_EXPIRY} WHERE code = ?`)
+        .bind(ms, daysFromNow(validDays(minutes)), daysFromNow(validDays(minutes)), code),
       env.DB.prepare("INSERT INTO ledger (code, at, kind, ms) VALUES (?1, ?2, 'topup', ?3)").bind(code, now, ms),
     ]);
     return json({ ok: true });

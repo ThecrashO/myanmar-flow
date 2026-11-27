@@ -18,7 +18,7 @@
 ## စသုံးနည်း
 
 1. **Install** — `MyanmarFlow-Setup.exe` ကို ဖွင့်ပါ။ အပြာရောင် box ပေါ်ရင် **More info → Run anyway** ([ဘာလို့လဲ?](docs/GUIDE.md#s3))
-2. **API key ထည့်** — Wizard က မြန်မာလို လမ်းပြပေးပါမယ်။ Google account နဲ့ အခမဲ့ ယူရပါတယ် ([အသေးစိတ်](docs/GUIDE.md#s4))။ Key မယူချင်ရင် **Myanmar Flow Code** နဲ့လည်း သုံးလို့ရ ([အသေးစိတ်](docs/GUIDE.md#code))
+2. **API key ထည့်** — Wizard က မြန်မာလို လမ်းပြပေးပါမယ်။ Google account နဲ့ အခမဲ့ ယူရပါတယ် ([အသေးစိတ်](docs/GUIDE.md#s4))။ Key မယူချင်ရင် **Myanmar Flow Code** နဲ့လည်း သုံးလို့ရ — Setup မှာ **🎁 အခမဲ့ ၅ မိနစ်** စမ်းပြီး [ဒီမှာ ဝယ်](https://myanmar-flow.thecrasho.com/buy) ([အသေးစိတ်](docs/GUIDE.md#code))
 3. **ပြော** — စာရိုက်မယ့်နေရာ နှိပ် → **ညာဘက် `Ctrl`** ဖိထား → ပြော → လွှတ်
 
 | လုပ်ချင်တာ | လုပ်ရမှာ |

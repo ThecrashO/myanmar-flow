@@ -5,6 +5,7 @@ and platform_mac.py."""
 
 import base64
 import contextlib
+import hashlib
 import io
 import json
 import logging
@@ -12,11 +13,13 @@ import math
 import os
 import queue
 import re
+import subprocess
 import sys
 import threading
 import time
 import tkinter as tk
 import unicodedata
+import uuid
 import wave
 import webbrowser
 from collections import deque
@@ -173,20 +176,89 @@ def live_url(cfg):
     return api_base(cfg).replace("http", "ws", 1) + LIVE_PATH
 
 
+CODE_EXPIRY = {}  # code -> "until" date from the last balance check (None: never expires)
+
+
+def expiry_text(code):
+    """' · 25/2/2027 အထိ' for a code that expires, else ''."""
+    iso = CODE_EXPIRY.get(code)
+    if not iso:
+        return ""
+    try:
+        d = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone()
+    except ValueError:
+        return ""
+    return f" · {d.day}/{d.month}/{d.year}".translate(MM_DIGITS) + " အထိ"
+
+
 def code_balance(code):
-    """(seconds left, None) for a code, or (None, Burmese explanation)."""
+    """(seconds left, None) for a code, or (None, Burmese explanation). Also notes its expiry."""
     try:
         resp = requests.get(CODE_SERVER.rstrip("/") + "/mf/balance",
                             headers={"Authorization": f"Bearer {code}"}, timeout=20)
     except requests.RequestException as e:
         return None, friendly_error(e)
     if resp.status_code == 200:
-        return resp.json().get("seconds", 0), None
+        data = resp.json()
+        CODE_EXPIRY[code] = data.get("expires_at")
+        return data.get("seconds", 0), None
     return None, friendly_error(RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}"))
 
 
 def minutes_text(seconds):
     return f"{mm_number(int(seconds // 60))} မိနစ်"
+
+
+# ---------------------------------------------------------------- free trial (buying is on the website)
+
+SHOP_ERRORS = {
+    "mf_trial_used": "ဒီစက်မှာ အခမဲ့ စမ်းပြီးသားပါ။ ဆက်သုံးချင်ရင် Code ဝယ်ပါ။",
+    "mf_trial_busy": "ဒီနေ့အတွက် အခမဲ့ စမ်းခွင့်တွေ ပြည့်သွားပါပြီ။ မနက်ဖြန် ထပ်စမ်းပါ။",
+    "mf_too_many": "ခဏအတွင်း အကြိမ်များလွန်းပါတယ်။ ခဏနေမှ ထပ်စမ်းပါ။",
+}
+
+
+def shop_call(method, path, **kw):
+    """(data, None) from the shop on the code server, or (None, Burmese explanation)."""
+    try:
+        resp = requests.request(method, CODE_SERVER.rstrip("/") + path, timeout=kw.pop("timeout", 30), **kw)
+    except requests.RequestException as e:
+        return None, friendly_error(e)
+    try:
+        data = resp.json()
+    except ValueError:
+        data = {}
+    if resp.ok:
+        return data, None
+    word = (data.get("error") or {}).get("status", "")
+    log.info("shop %s %s: %s %s", method, path.split("/")[2] if path.count("/") > 1 else path, resp.status_code, word)
+    return None, SHOP_ERRORS.get(word, f"Server ပြဿနာ ({resp.status_code}) - ခဏနေမှ ထပ်စမ်းပါ")
+
+
+def device_id():
+    """A stable, hashed ID for this computer, so each one gets a single free trial."""
+    raw = ""
+    try:
+        if IS_MAC:
+            out = subprocess.run(["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"],
+                                 capture_output=True, text=True, timeout=5).stdout
+            m = re.search(r'"IOPlatformUUID" = "([^"]+)"', out)
+            raw = m.group(1) if m else ""
+        else:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography", 0,
+                                winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as key:
+                raw = winreg.QueryValueEx(key, "MachineGuid")[0]
+    except Exception as e:
+        log.info("device id: %s", e)
+    raw = raw or f"{uuid.getnode():x}"
+    return hashlib.sha256(f"myanmar-flow:{raw}".encode()).hexdigest()
+
+
+def free_trial():
+    """(code, None) for a new 5-minute trial code, or (None, Burmese explanation)."""
+    data, problem = shop_call("POST", "/mf/trial", json={"device": device_id()})
+    return (data["code"], None) if data else (None, problem)
 
 
 # ---------------------------------------------------------------- audio / API
@@ -607,7 +679,9 @@ def friendly_error(err):
     if isinstance(err, requests.Timeout):
         return "အင်တာနက် နှေးလွန်းပါတယ် - ထပ်စမ်းပါ"
     if "mf_no_minutes" in msg or "error 402" in msg or "status 402" in msg:
-        return "မိနစ် ကုန်သွားပါပြီ - ငွေဖြည့်ပါ"
+        return "မိနစ် ကုန်ပါပြီ - Icon → 💳 နဲ့ ဖြည့်ပါ"
+    if "mf_code_expired" in msg:
+        return "Code သက်တမ်း ကုန်ပါပြီ - Icon → 💳 နဲ့ ဖြည့်ပါ"
     if "mf_code_disabled" in msg:
         return "ဒီ Code ကို ပိတ်ထားပါတယ်"
     if "mf_code_invalid" in msg:
@@ -977,9 +1051,12 @@ class SettingsWindow:
             ("Gemini API key", ttk.Entry(frm, textvariable=self.vars["api_key"], show="•", width=44)),
         ]
         if CODE_SERVER:
-            self.balance = ttk.Label(frm, text="", foreground="#6b7280")
+            buy_row = ttk.Frame(frm)
+            self.balance = ttk.Label(buy_row, text="", foreground="#6b7280")
+            self.balance.pack(side="left")
+            ttk.Button(buy_row, text="💳 မိနစ် ဝယ်မယ်", command=app.open_buy).pack(side="right")
             rows += [("Myanmar Flow Code (key အစား)", ttk.Entry(frm, textvariable=self.vars["pro_code"], width=44)),
-                     ("", self.balance)]
+                     ("", buy_row)]
         rows += [
             ("Hotkey (ဖိထားပြီးပြောရန်)", ttk.Entry(frm, textvariable=self.vars["hotkey"], width=44)),
             ("English ဘာသာပြန် hotkey", ttk.Entry(frm, textvariable=self.vars["translate_hotkey"], width=44)),
@@ -1030,7 +1107,7 @@ class SettingsWindow:
         def done(result, error):
             seconds, problem = result or (None, friendly_error(error))
             if self.balance.winfo_exists():
-                self.balance.config(text=problem or f"လက်ကျန် {minutes_text(seconds)}")
+                self.balance.config(text=problem or f"လက်ကျန် {minutes_text(seconds)}{expiry_text(code)}")
         run_in_background(self.win, lambda: code_balance(code), done)
 
     def save(self):
@@ -1285,8 +1362,13 @@ class SetupWizard:
                   "② \"Create API key\" ကိုနှိပ်ပြီး key ကို Copy ကူးပါ\n"
                   "③ ဒီအောက်က အကွက်ထဲ Paste လုပ်ပြီး \"စစ်ဆေးမယ်\" နှိပ်ပါ")
         if CODE_SERVER:
-            self.para("Myanmar Flow Code (MF-XXXX-XXXX) ဝယ်ထားရင် key အစား Code ကို ထည့်လို့ရပါတယ်။",
-                      foreground="#6b7280")
+            self.para("Key မယူချင်ရင် Myanmar Flow Code နဲ့ သုံးပါ (VPN မလို)။ ဝယ်ထားတဲ့ Code ကို "
+                      "အောက်က အကွက်ထဲ ထည့်လို့ရပါတယ်။", foreground="#6b7280")
+            codes = ttk.Frame(self.body)
+            codes.pack(anchor="w", pady=(4, 0))
+            self.trial_btn = ttk.Button(codes, text="🎁  အခမဲ့ ၅ မိနစ် စမ်းမယ်", command=self.get_trial)
+            self.trial_btn.pack(side="left")
+            ttk.Button(codes, text="💳  Code ဝယ်မယ်", command=self.app.open_buy).pack(side="left", padx=8)
         ttk.Button(self.body, text="🔑  API key ယူရန် (aistudio.google.com)",
                    command=lambda: webbrowser.open("https://aistudio.google.com/apikey")).pack(anchor="w", pady=8)
         self.key_var = tk.StringVar(value=self.cfg["pro_code"] if using_code(self.cfg) else self.cfg["api_key"])
@@ -1297,6 +1379,27 @@ class SetupWizard:
         self.check_btn = ttk.Button(self.footer, text="စစ်ဆေးမယ် →", command=self.check_key)
         self.check_btn.pack(side="right")
         entry.bind("<Return>", lambda e: self.check_key())
+
+    def get_trial(self):
+        self.trial_btn.configure(state="disabled")
+        self.key_status.configure(text="အခမဲ့ Code ယူနေပါတယ်...", foreground="#6b7280")
+
+        def done(result, error):
+            code, problem = result or (None, friendly_error(error))
+            if not self.win.winfo_exists():
+                return
+            self.trial_btn.configure(state="normal")
+            if problem:
+                self.key_status.configure(text=f"❌ {problem}", foreground="#e5484d")
+                return
+            self.got_code(code)
+        run_in_background(self.win, free_trial, done)
+
+    def got_code(self, code):
+        """A code from the free trial: check it and move on."""
+        if hasattr(self, "key_var") and self.key_var.get() != code:
+            self.key_var.set(code)
+            self.check_key()
 
     def check_key(self):
         key = self.key_var.get().strip()
@@ -1452,10 +1555,11 @@ class App:
             pystray.MenuItem(lambda _: f"⬆ Version အသစ် ရယူရန် ({self.latest[0]})" if self.latest else "",
                              lambda: webbrowser.open(self.latest[1]), visible=lambda _: bool(self.latest)),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem(lambda _: f"⏳ လက်ကျန် {minutes_text(self.balance or 0)}", None, enabled=False,
+            pystray.MenuItem(lambda _: f"⏳ လက်ကျန် {minutes_text(self.balance or 0)}{expiry_text(self.cfg['pro_code'])}", None, enabled=False,
                              visible=lambda _: using_code(self.cfg) and self.balance is not None),
             pystray.MenuItem("🕘 မကြာခင်က စာ (Copy)", pystray.Menu(self.history_items),
                              visible=lambda _: bool(self.history)),
+            pystray.MenuItem("💳 မိနစ် ဝယ်မယ် / ဖြည့်မယ်...", lambda: self.ui.put(("buy",)), visible=bool(CODE_SERVER)),
             pystray.MenuItem("📊 Dashboard...", lambda: self.ui.put(("dashboard",))),
             pystray.MenuItem("📝 စကားလုံးနဲ့ Shortcut...", lambda: self.ui.put(("words",))),
             pystray.MenuItem("Settings...", lambda: self.ui.put(("settings",))),
@@ -1547,7 +1651,7 @@ class App:
             self.update_menu()
             if seconds < 600 and not self.low_warned:
                 self.low_warned = True
-                self.notify(f"Code မှာ {minutes_text(seconds)}ပဲ ကျန်ပါတော့တယ်။ ငွေဖြည့်ဖို့ ဆက်သွယ်ပါ။")
+                self.notify(f"Code မှာ {minutes_text(seconds)}ပဲ ကျန်ပါတော့တယ်။ Icon → 💳 မိနစ် ဖြည့်မယ် ကို နှိပ်ပါ။")
             elif seconds >= 600:
                 self.low_warned = False
         threading.Thread(target=work, daemon=True).start()
@@ -1738,6 +1842,8 @@ class App:
                     self.open_wizard()
                 elif msg[0] == "words":
                     self.words = self.open_window(self.words, WordsWindow)
+                elif msg[0] == "buy":
+                    self.open_buy()
                 elif msg[0] == "dashboard":
                     self.dashboard = self.open_window(self.dashboard, DashboardWindow)
                 elif msg[0] == "quit":
@@ -1762,6 +1868,12 @@ class App:
             self.wizard.win.focus_force()
             return
         self.wizard = SetupWizard(self)
+
+    def open_buy(self):
+        """The shop is the website: it takes the payment, checks it and shows the code.
+        With a code already in the app, the page tops that code up, so nothing to paste."""
+        code = self.cfg["pro_code"] if using_code(self.cfg) else ""
+        webbrowser.open(CODE_SERVER.rstrip("/") + "/buy" + (f"?code={code}" if code else ""))
 
     def open_window(self, current, cls):
         plat.bring_to_front()

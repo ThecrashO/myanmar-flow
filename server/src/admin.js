@@ -14,6 +14,7 @@ export const adminPage = `<!doctype html>
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, "Segoe UI", "Myanmar Text", sans-serif; }
   main { max-width:980px; margin:0 auto; padding:24px 16px 60px; }
   h1 { font-size:20px; font-weight:600; margin:0 0 16px; }
+  h2 { font-size:16px; font-weight:600; margin:0 0 6px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   input { font:inherit; color:inherit; background:transparent; border:1px solid var(--line); border-radius:8px; padding:7px 10px; min-width:0; }
@@ -49,21 +50,35 @@ export const adminPage = `<!doctype html>
       <button id="create" class="primary">Code အသစ် ထုတ်မယ်</button>
       <button id="trial">အခမဲ့ စမ်း ၅ မိနစ်</button>
     </div>
-    <p class="muted" style="margin:6px 0 0">အခမဲ့ စမ်းခလုတ်က ၅ မိနစ် Code ကို "trial:" ဆိုတဲ့ နာမည်နဲ့ ထုတ်ပေးပါတယ်။ ကြိုက်ရင် အဲဒီ Code ကိုပဲ + မိနစ် နဲ့ ဖြည့်ပေးပါ။</p>
+    <p class="muted" style="margin:6px 0 0">သက်တမ်း: ၆၀ မိနစ်အောက် ၃၀ ရက်၊ ၆၀–၁၇၉ မိနစ် ၉၀ ရက်၊ ၁၈၀ မိနစ်နဲ့အထက် ၁ နှစ် (ဖြည့်ရင် ပြန်စ)။ အခမဲ့ စမ်းခလုတ်က ၇ ရက် သက်တမ်းနဲ့ ၅ မိနစ် Code ကို "trial:" ဆိုတဲ့ နာမည်နဲ့ ထုတ်ပေးပါတယ်။ ကြိုက်ရင် အဲဒီ Code ကိုပဲ + မိနစ် နဲ့ ဖြည့်ပေးပါ။</p>
     <p id="msg"></p>
   </div>
   <div class="card scroll">
     <table>
-      <thead><tr><th>Code</th><th>ဘယ်သူ</th><th>ကျန်</th><th>သုံးပြီး</th><th>နောက်ဆုံးသုံး</th><th></th></tr></thead>
-      <tbody id="rows"><tr><td colspan="6" class="muted">Admin token ထည့်ပြီး ဝင်ပါ</td></tr></tbody>
+      <thead><tr><th>Code</th><th>ဘယ်သူ</th><th>ကျန်</th><th>သုံးပြီး</th><th>နောက်ဆုံးသုံး</th><th>သက်တမ်း</th><th></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="7" class="muted">Admin token ထည့်ပြီး ဝင်ပါ</td></tr></tbody>
     </table>
+  </div>
+  <div class="card">
+    <h2>Shop · အလိုလို ရောင်းတာ</h2>
+    <p class="muted">Screenshot (AI စစ်) နဲ့ ဖုန်းက "ငွေဝင်" notification ကိုက်တာနဲ့ Code ကို အလိုလို ပေးပါတယ်။
+      ဖုန်းချိတ်ရန် link: <button id="copyPhone">Copy</button> <span id="phoneSeen"></span></p>
+    <div class="scroll"><table>
+      <thead><tr><th>Order</th><th>မိနစ်</th><th>ငွေ</th><th>အခြေအနေ</th><th>Code</th><th>အချိန်</th><th></th></tr></thead>
+      <tbody id="orders"></tbody>
+    </table></div>
+    <p class="muted" style="margin:16px 0 4px">ဖုန်းက ပို့တဲ့ notification တွေ</p>
+    <div class="scroll"><table>
+      <thead><tr><th>အချိန်</th><th>ငွေ</th><th>Wallet</th><th>ပေးသူ / စာ</th><th>Order</th></tr></thead>
+      <tbody id="payments"></tbody>
+    </table></div>
   </div>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
 const store = { get() { try { return sessionStorage.getItem("mf_admin") || ""; } catch { return ""; } },
                 set(v) { try { sessionStorage.setItem("mf_admin", v); } catch {} } };
-let token = store.get(), fresh = null, all = [];
+let token = store.get(), fresh = null, all = [], phoneUrl = null;
 $("token").value = token;
 
 async function api(path, options = {}) {
@@ -84,7 +99,7 @@ async function load() {
   all = codes;
   const tbody = $("rows");
   tbody.textContent = "";
-  if (!codes.length) { const r = tbody.insertRow(); cell(r, "Code မရှိသေးပါ", "muted").colSpan = 6; return; }
+  if (!codes.length) { const r = tbody.insertRow(); cell(r, "Code မရှိသေးပါ", "muted").colSpan = 7; return; }
   for (const c of codes) {
     const r = tbody.insertRow();
     const codeCell = cell(r, "");
@@ -94,6 +109,8 @@ async function load() {
     cell(r, mins(c.balance_ms) + " မိနစ်", "num" + (c.balance_ms <= 0 ? " off" : ""));
     cell(r, mins(c.used_ms) + " မိနစ်", "num");
     cell(r, when(c.last_used_at), "muted");
+    const over = c.expires_at && c.expires_at < new Date().toISOString();
+    cell(r, c.expires_at ? new Date(c.expires_at).toLocaleDateString() + (over ? " (ကုန်ပြီ)" : "") : "မကုန်", over ? "off" : "muted");
     const actions = r.insertCell();
     button(actions, "Copy", () => navigator.clipboard.writeText(c.code).then(() => say(c.code + " ကူးပြီးပါပြီ")));
     button(actions, "+ မိနစ်", async () => {
@@ -114,15 +131,55 @@ async function load() {
     }, "danger");
     if (c.disabled) cell(r, "ပိတ်ထား", "off");
   }
+  await loadShop();
 }
+
+const ks = (n) => n == null ? "—" : Number(n).toLocaleString("en-US") + " Ks";
+const STATUS = { new: "Screenshot စောင့်", checking: "ဖုန်းအတည်ပြုချက် စောင့်", paid: "✓ ရပြီ" };
+
+async function loadShop() {
+  const { orders, payments, phone_url } = await api("/shop");
+  phoneUrl = phone_url;
+  $("copyPhone").disabled = !phone_url;
+  $("phoneSeen").textContent = !phone_url ? "(PHONE_TOKEN secret မထည့်ရသေး)"
+    : payments.length ? "· ဖုန်းက နောက်ဆုံး ပို့ချိန် " + when(payments[0].at) : "· ဖုန်းက ဘာမှ မပို့ရသေး";
+  const ob = $("orders"); ob.textContent = "";
+  if (!orders.length) cell(ob.insertRow(), "Order မရှိသေးပါ", "muted").colSpan = 7;
+  for (const o of orders) {
+    const r = ob.insertRow();
+    cell(r, o.id.slice(0, 6) + (o.topup ? " (ဖြည့်)" : "") + (o.name ? " · " + o.name : "") + (o.email ? " · " + o.email : ""));
+    cell(r, o.minutes, "num");
+    cell(r, ks(o.amount), "num");
+    cell(r, (STATUS[o.status] || o.status) + (o.reason ? " — " + o.reason : "") + (o.payment_id < 0 ? " (လက်နဲ့)" : ""), o.status === "paid" ? "" : "muted");
+    cell(r, o.code || "—");
+    cell(r, when(o.created_at), "muted");
+    const act = r.insertCell();
+    if (o.status !== "paid") button(act, "ငွေရပြီ", async () => {
+      if (!confirm(ks(o.amount) + " ကို တကယ် ရထားတာ သေချာလား? Code ကို ချက်ချင်း ပေးပါမယ်။")) return;
+      try { const res = await api("/shop/" + o.id + "/approve", { method: "POST", body: "{}" }); say("Order " + o.id.slice(0, 6) + " → " + res.code); load(); }
+      catch (e) { say(e.message, true); }
+    });
+  }
+  const pb = $("payments"); pb.textContent = "";
+  if (!payments.length) cell(pb.insertRow(), "မရှိသေးပါ", "muted").colSpan = 5;
+  for (const p of payments) {
+    const r = pb.insertRow();
+    cell(r, when(p.at), "muted");
+    cell(r, ks(p.amount), "num");
+    cell(r, p.wallet || "—");
+    cell(r, p.amount == null ? "(ငွေဝင် မဟုတ်) " + p.raw.slice(0, 60) : (p.sender || "—"), p.amount == null ? "muted" : "");
+    cell(r, p.order_id ? p.order_id.slice(0, 6) : "—");
+  }
+}
+$("copyPhone").onclick = () => phoneUrl && navigator.clipboard.writeText(phoneUrl).then(() => say("ဖုန်းချိတ်ရန် link ကူးပြီးပါပြီ — MacroDroid ထဲ Paste လုပ်ပါ"));
 
 $("login").onclick = async () => {
   token = $("token").value.trim(); store.set(token);
   try { await load(); say("ဝင်ပြီးပါပြီ"); } catch (e) { say(e.message, true); }
 };
-async function create(note, minutes) {
+async function create(note, minutes, days) {
   try {
-    const { code } = await api("/codes", { method: "POST", body: JSON.stringify({ note, minutes }) });
+    const { code } = await api("/codes", { method: "POST", body: JSON.stringify({ note, minutes, days }) });
     fresh = code; $("note").value = ""; say(code + " ထုတ်ပြီးပါပြီ — Copy နှိပ်ပြီး ပို့ပေးပါ"); load();
   } catch (e) { say(e.message, true); }
 }
@@ -137,7 +194,7 @@ $("trial").onclick = () => {
   if (!who) return say("ဘယ်သူ့အတွက်လဲ ဆိုတာ အရင်ထည့်ပါ (တစ်ယောက် တစ်ခါပဲ ပေးဖို့)", true);
   const had = all.find((c) => (c.note || "").toLowerCase() === ("trial: " + who).toLowerCase());
   if (had && !confirm(who + " က " + had.code + " နဲ့ အခမဲ့ စမ်းပြီးသားပါ။ နောက်တစ်ခု ထပ်ပေးမလား?")) return;
-  create("trial: " + who, 5);
+  create("trial: " + who, 5, 7);
 };
 if (token) load().catch((e) => say(e.message, true));
 </script>

@@ -117,6 +117,8 @@
   .price .mins small { font-size: 16px; font-weight: 600; color: var(--muted); }
   .price .ks { font: 700 22px "Inter", "Noto Sans Myanmar", sans-serif; color: var(--accent); margin-top: 8px; }
   .price .per { color: var(--muted); font-size: 14px; }
+  .price .valid { display: inline-block; margin: 8px 0 4px; padding: 2px 10px; border-radius: 999px; background: var(--tint); color: var(--text); font-size: 13.5px; font-weight: 600; }
+  .price .valid.best-valid { background: var(--accent); color: #fff; }
   .price.best { border: 2px solid var(--accent); }
   .price .top { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
   .card.price .mins { color: var(--text); }
@@ -146,17 +148,8 @@
   .trial span { color: var(--muted); font-size: 14px; }
   .trial .btn { flex: none; }
   @media (max-width: 640px) { .trial { flex-wrap: wrap; } .trial div { min-width: 0; flex-basis: calc(100% - 62px); } .trial .btn { width: 100%; justify-content: center; } }
-  .pay { margin-top: 20px; border-top: 1px dashed var(--line); padding-top: 18px; }
-  .pay-title { font-weight: 700; margin: 0 0 10px; }
-  .pay-title span { color: var(--accent); }
-  .pay-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-  .pay .wallets { font-size: 14.5px; }
-  .pay-no { font: 700 19px "Inter", sans-serif; letter-spacing: .02em; color: var(--text); background: var(--tint); border: 1px solid var(--line);
-            border-radius: 10px; padding: 8px 12px; cursor: pointer; }
-  .pay-no:hover { border-color: var(--accent); }
-  .pay-no small { font: 600 12px "Noto Sans Myanmar", sans-serif; color: var(--accent); margin-left: 6px; }
-  .pay ol { margin: 12px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
-  .pay ol li { margin: 3px 0; }
+  .pay-steps { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+  .pay-steps li::before { content: "✓"; color: var(--ok); font-weight: 700; margin-right: 8px; }
   .hero .trial-link { display: inline-block; margin-top: 18px; color: var(--accent-2); font-weight: 700; font-size: 15px; text-decoration: none;
                       border-bottom: 1px dashed rgba(94,200,255,.6); }
   .hero .trial-link:hover { color: #fff; }
@@ -205,11 +198,8 @@
   .choices label { margin: 0; font-weight: 600; font-size: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; cursor: pointer; background: var(--bg); }
   .choices input:checked + label { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
   .choices input:focus-visible + label { outline: 2px solid var(--accent); }
-  .preview { margin-top: 18px; background: var(--tint); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--muted); white-space: pre-wrap; }
   .send { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 16px; }
   .send .btn { justify-content: center; }
-  .btn.tg { background: #229ed9; color: #fff; }
-  #copied { min-height: 1.4em; font-size: 13px; color: var(--ok); margin: 10px 0 0; }
   .direct { display: grid; gap: 12px; margin-top: 28px; }
   .direct a { display: flex; align-items: center; gap: 14px; text-decoration: none; padding: 14px 16px; border-radius: 14px;
               background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
@@ -325,7 +315,7 @@
         Mac အတွက် Download
       </a>
     </div>
-    <a class="trial-link" href="#contact" data-trial>Key မလိုဘဲ ၅ မိနစ် အခမဲ့ စမ်းကြည့်မယ် →</a>
+    <a class="trial-link" href="#trial">Key မလိုဘဲ ၅ မိနစ် အခမဲ့ စမ်းကြည့်မယ် →</a>
     <p class="note">Windows 10/11 · macOS 14+ (Apple Silicon နဲ့ Intel) · Open source</p>
     <div class="shot"><img src="https://thecrasho.com/assets/images/projects/Myanmar%20Flow%20Laptop.webp" width="1672" height="941" alt="Myanmar Flow, voice typing for Windows and Mac laptops: a laptop with a recording pill on screen, a Ctrl key, microphone and voice-to-text panels"></div>
   </div>
@@ -480,30 +470,33 @@
       <div class="card price">
         <p class="mins">30 <small>မိနစ်</small></p>
         <p class="ks">2,970 Ks</p>
+        <p class="valid">သက်တမ်း ၃၀ ရက်</p>
         <p class="per">Message ~၁၈၀ · ခဏခဏ မသုံးသူတွေ</p>
-        <a class="btn line wide" href="#contact" data-min="30">ဒါယူမယ်</a>
+        <a class="btn line wide" href="/buy?min=30">ဒါယူမယ်</a>
       </div>
       <div class="card price best">
         <span class="badge dark top plain">အကြံပြု</span>
         <p class="mins">1 <small>နာရီ</small></p>
         <p class="ks">5,940 Ks</p>
+        <p class="valid">သက်တမ်း ၉၀ ရက်</p>
         <p class="per">Message ~၃၆၀ · တစ်ရက် ၂၀ ဆိုရင် ၁၈ ရက်</p>
-        <a class="btn solid wide" href="#contact" data-min="60">ဒါယူမယ်</a>
+        <a class="btn solid wide" href="/buy?min=60">ဒါယူမယ်</a>
       </div>
       <div class="card price">
         <p class="mins">3 <small>နာရီ</small></p>
         <p class="ks">17,820 Ks</p>
+        <p class="valid best-valid">သက်တမ်း ၁ နှစ် · အတန်ဆုံး</p>
         <p class="per">Message ~၁,၀၈၀ · ဆိုင် page၊ customer စာပြန် များသူတွေ</p>
-        <a class="btn line wide" href="#contact" data-min="180">ဒါယူမယ်</a>
+        <a class="btn line wide" href="/buy?min=180">ဒါယူမယ်</a>
       </div>
     </div>
-    <div class="trial">
+    <div class="trial" id="trial">
       <span class="gift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span>
-      <div><b>မဝယ်ခင် ၅ မိနစ် အခမဲ့ စမ်းပါ</b><span>Message ~၃၀ စာ ကိုယ့်အသံနဲ့ စမ်းကြည့်ပြီး ကြိုက်မှ ဝယ်ပါ။ တစ်ယောက်ကို တစ်ခါ ရပါတယ်။ ကြိုက်ရင် အဲဒီ Code ကိုပဲ ငွေဖြည့်ပြီး ဆက်သုံးလို့ရ။</span></div>
-      <a class="btn solid" href="#contact" data-trial>အခမဲ့ စမ်းမယ်</a>
+      <div><b>မဝယ်ခင် ၅ မိနစ် အခမဲ့ စမ်းပါ</b><span>App ကို install လုပ်ပြီး Setup မှာ <b>🎁 အခမဲ့ ၅ မိနစ် စမ်းမယ်</b> ကို နှိပ်ရုံပါပဲ — Code က အလိုလို ဝင်လာပါမယ်။ Message ~၃၀ စာ စမ်းပြီး ကြိုက်မှ ဝယ်ပါ။ စက်တစ်လုံးကို တစ်ခါ၊ ၇ ရက်အတွင်း သုံးရပါတယ်။</span></div>
+      <a class="btn solid" href="#guide">App ယူမယ်</a>
     </div>
     <ul class="perks-row">
-      <li>VPN မလို</li><li>Key ယူစရာ မလို</li><li>Desktop + Laptop နှစ်လုံး သုံးလို့ရ</li><li>မိနစ် သက်တမ်း မကုန်</li><li>ကုန်ရင် Code အဟောင်းကိုပဲ ဖြည့်</li>
+      <li>VPN မလို</li><li>Key ယူစရာ မလို</li><li>Desktop + Laptop နှစ်လုံး သုံးလို့ရ</li><li>ဖြည့်ရင် သက်တမ်း ပြန်စ</li><li>ကုန်ရင် Code အဟောင်းကိုပဲ ဖြည့်</li>
     </ul>
     <p class="fine">ခန့်မှန်းချက်တွေက message တစ်ခုကို ၁၀ စက္ကန့် ပြောတယ်၊ အဲဒီစာကို ကိုယ်တိုင်ရိုက်ရင် ၁ မိနစ်လောက် ကြာတယ်လို့ တွက်ထားတာပါ။
       AI စာပြင် (ဒါမှမဟုတ် English ဘာသာပြန်) ဖွင့်ထားရင် တစ်ကြိမ်ကို ၅ စက္ကန့် ထပ်တွက်လို့ message အရေအတွက် ၃ ပုံ ၂ ပုံလောက် ဖြစ်ပါမယ်။</p>
@@ -515,7 +508,7 @@
     <p class="eyebrow">Code နဲ့ စသုံးနည်း</p>
     <h2>ဝယ်ပြီး <em>၅ မိနစ်</em>အတွင်း စသုံးလို့ရ</h2>
     <ol class="steps">
-      <li><div><b>Code ယူပါ</b><span>အောက်က form မှာ မိနစ် ရွေးပြီး Telegram နဲ့ ပို့ပါ (ဒါမှမဟုတ် ဖုန်း / Viber နဲ့ ဆက်သွယ်ပါ)။ ငွေပေးချေပြီးရင် Code ပို့ပေးပါမယ်။ အရင် စမ်းချင်ရင် <a href="#contact" data-trial>အခမဲ့ ၅ မိနစ် Code</a> တောင်းလို့ရပါတယ်။</span></div></li>
+      <li><div><b>Code ယူပါ</b><span><a href="/buy">ဒီမှာ</a> (ဒါမှမဟုတ် app ထဲက <b>💳 မိနစ် ဝယ်မယ်</b>) မိနစ် ရွေးပြီး KBZPay / WavePay နဲ့ ပေးပါ။ Screenshot ထည့်လိုက်ရင် Code ကို ချက်ချင်း ရပါမယ်။ အရင် စမ်းချင်ရင် app ထဲက <b>🎁 အခမဲ့ ၅ မိနစ်</b> ကို နှိပ်ပါ။</span></div></li>
       <li id="mac"><div><b>App ကို Install လုပ်ပါ</b><span>
         Windows: <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-Setup.exe">MyanmarFlow-Setup.exe</a> ·
         Mac (M1/M2/M3/M4): <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest/download/MyanmarFlow-mac.zip">MyanmarFlow-mac.zip</a> ·
@@ -546,17 +539,21 @@
     <p class="eyebrow">မေးလေ့ရှိတာတွေ</p>
     <h2>သိချင်တာ <em>ရှိသေးလား</em></h2>
     <details><summary>မဝယ်ခင် အခမဲ့ စမ်းလို့ရလား</summary>
-      <p>ရပါတယ်။ တစ်ယောက်ကို ၅ မိနစ် (message ၃၀ လောက်) ပါတဲ့ Code တစ်ခု အခမဲ့ ပေးပါတယ်။ အောက်က form မှာ <b>အခမဲ့ ၅ မိနစ် စမ်းမယ်</b> ကို ရွေးပြီး Telegram နဲ့ ပို့ပါ။ ကြိုက်ရင် အဲဒီ Code ကိုပဲ ငွေဖြည့်ပြီး ဆက်သုံးလို့ရလို့ ဘာမှ ပြန်ထည့်စရာ မလိုပါ။</p></details>
+      <p>ရပါတယ်။ App ကို install လုပ်ပြီး Setup wizard (ဒါမှမဟုတ် tray menu) က <b>🎁 အခမဲ့ ၅ မိနစ် စမ်းမယ်</b> ကို နှိပ်ရုံပါပဲ — ၅ မိနစ် (message ၃၀ လောက်) ပါတဲ့ Code က အလိုလို ဝင်လာပါမယ်။ စက်တစ်လုံးကို တစ်ခါ ရပါတယ်။ ကြိုက်ရင် အဲဒီ Code ကိုပဲ ငွေဖြည့်ပြီး ဆက်သုံးလို့ရပါတယ်။</p></details></details>
+    <details><summary>ငွေလွှဲပြီး Code ကို ဘယ်လောက်ကြာမှ ရလဲ</summary>
+      <p>ချက်ချင်းပါပဲ။ ငွေလွှဲပြီး screenshot ထည့်လိုက်ရင် AI က စစ်ပြီး ငွေဝင်တာ အတည်ဖြစ်တာနဲ့ (များသောအားဖြင့် ၁-၂ မိနစ်) Code ကို page မှာ (app ကနေ ဝယ်ရင် app ထဲကို) အလိုလို ရပါတယ်။ ဘယ်သူ့ကိုမှ စောင့်စရာ၊ စာပို့စရာ မလိုပါ။ ညသန်းခေါင်မှာ ဝယ်လည်း ရပါတယ်။</p>
     <details><summary>Code နဲ့ဆိုရင် VPN တကယ် မလိုတာလား</summary>
       <p>မလိုပါဘူး။ Code နဲ့ဆိုရင် app က Myanmar Flow server ကို ပို့ပြီး server က Google ကို ဆက်ပေးလို့ မြန်မာပြည်ထဲကနေ VPN မဖွင့်ဘဲ သုံးလို့ရပါတယ်။ ကိုယ်ပိုင် key နဲ့ သုံးမှသာ VPN လိုပါတယ်။</p></details>
     <details><summary>မိနစ်ကို ဘယ်လို တွက်လဲ</summary>
       <p>ပြောတဲ့ အသံ အရှည်အတိုင်း စက္ကန့်အထိ တိတိကျကျ တွက်ပါတယ်။ ၁၀ စက္ကန့် ပြောရင် ၁၀ စက္ကန့်ပဲ လျော့ပါတယ်။ AI စာပြင် ဒါမှမဟုတ် English ဘာသာပြန် ဖွင့်ထားရင် တစ်ကြိမ်ကို ၅ စက္ကန့် ထပ်တွက်ပါတယ်။</p></details>
+    <details><summary>Code သက်တမ်း ဘယ်လောက်လဲ</summary>
+      <p>များများဝယ်လေ ကြာကြာ သုံးလို့ရလေပါ — ၆၀ မိနစ်အောက် <b>၃၀ ရက်</b>၊ ၁ နာရီကနေ ၃ နာရီအောက် <b>၉၀ ရက်</b>၊ ၃ နာရီနဲ့ အထက် <b>၁ နှစ်</b>။ ငွေဖြည့်တိုင်း သက်တမ်း ပြန်စပြီး ကျန်နေတဲ့ မိနစ်တွေ အားလုံး ဆက်သုံးလို့ရပါတယ်။ သက်တမ်းကုန်သွားရင်လည်း Code အဟောင်းကိုပဲ ဖြည့်လိုက်ရင် ကျန်ခဲ့တဲ့ မိနစ်တွေ ပြန်ရပါတယ်။ အခမဲ့ စမ်း Code က ၇ ရက်ပါ။</p></details>
     <details><summary>Code တစ်ခုကို စက်ဘယ်နှလုံးမှာ သုံးလို့ရလဲ</summary>
       <p>ကိုယ့်စက်တွေ (ဥပမာ Desktop နဲ့ Laptop) မှာ Code တစ်ခုတည်း ထည့်သုံးလို့ရပါတယ်။ မိနစ်ကတော့ အတူတူ လျော့ပါမယ်။ Code ကို တခြားသူကို မပေးပါနဲ့ — သူတို့ သုံးရင် ကိုယ့်မိနစ် ကုန်ပါမယ်။</p></details>
     <details><summary>ပြောတဲ့စာတွေကို သိမ်းထားလား</summary>
       <p>မသိမ်းပါဘူး။ အသံကို Google ဆီ စာပြောင်းဖို့ ပို့ပြီး ထွက်လာတဲ့စာကို ကိုယ့်စက်ကိုပဲ ပြန်ပို့ပါတယ်။ Server က ဘယ်နှစက္ကန့် သုံးလဲ ဆိုတာပဲ မှတ်ပါတယ်။</p></details>
     <details><summary>မိနစ်ကုန်သွားရင် ဘာဖြစ်မလဲ</summary>
-      <p>App က "မိနစ် ကုန်သွားပါပြီ - ငွေဖြည့်ပါ" လို့ ပြပါမယ်။ ဆက်သွယ်ပြီး ငွေဖြည့်ရင် Code အဟောင်းကိုပဲ ချက်ချင်း ဆက်သုံးလို့ရပါတယ်။ ဘာမှ ပြန်ထည့်စရာ မလိုပါ။</p></details>
+      <p>App က "မိနစ် ကုန်သွားပါပြီ - ငွေဖြည့်ပါ" လို့ ပြပါမယ်။ App ထဲက <b>💳 မိနစ် ဝယ်မယ်</b> ဒါမှမဟုတ် <a href="/buy">ဒီ website</a> ကနေ ငွေဖြည့်ရင် Code အဟောင်းကိုပဲ ချက်ချင်း ဆက်သုံးလို့ရပါတယ်။ ဘာမှ ပြန်ထည့်စရာ မလိုပါ။</p></details>
     <details><summary>Burmese စာ ဘယ်လောက် မှန်လဲ</summary>
       <p>ပုံမှန်ပြောတဲ့ စကားကို အတော်လေး မှန်ပါတယ်။ နာမည်လို အမြဲမှားတဲ့ စာလုံးတွေကို "စကားလုံးနဲ့ Shortcut" မှာ တစ်ခါ ပြင်ထားရင် နောက်ပိုင်း အမြဲမှန်ပါမယ်။ Code မဝယ်ခင် အခမဲ့ ၅ မိနစ် Code နဲ့ (ဒါမှမဟုတ် ကိုယ်ပိုင် key နဲ့) စမ်းကြည့်လို့ ရပါတယ်။</p></details>
     <details><summary>ဘယ်စက်တွေမှာ သုံးလို့ရလဲ</summary>
@@ -591,61 +588,38 @@
 <section class="contact" id="contact">
   <div class="wrap split" style="align-items:start">
     <div>
-      <p class="eyebrow">Code ဝယ်ရန် · ဆက်သွယ်ရန်</p>
-      <h2 style="color:#fff">မေးချင်တာရှိရင် <em style="color:var(--accent-2)">တိုက်ရိုက်</em> ဆက်သွယ်ပါ</h2>
-      <p class="lead">Form ဖြည့်ပြီး Telegram ခလုတ်ကို နှိပ်လိုက်ရင် စာက အဆင်သင့် ရေးပြီးသား ဖြစ်နေပါမယ် — Send ပဲ နှိပ်ရုံပါ။ အမြန်ဆုံး ပြန်ဖြေပေးပါမယ်။</p>
+      <p class="eyebrow">Code ဝယ်ရန်</p>
+      <h2 style="color:#fff">ပေးလိုက်တာနဲ့ <em style="color:var(--accent-2)">ချက်ချင်း</em> ရမယ်</h2>
+      <p class="lead">မိနစ် ရွေး → KBZPay / WavePay နဲ့ ပေး → screenshot ထည့်။ AI က စစ်ပြီး ငွေဝင်တာ အတည်ဖြစ်တာနဲ့ Code ကို တန်းရပါမယ်။ ဘယ်သူ့ကိုမှ စောင့်စရာ၊ စာပို့စရာ မလိုပါ — ၂၄ နာရီ ဝယ်လို့ရပါတယ်။</p>
+      <p class="lead" style="margin-top:22px;font-size:15px">မေးချင်တာ ရှိရင်</p>
       <div class="direct">
-        <a href="https://t.me/thecrashO" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.2 1.1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13 1.4 11.5c-1-.3-1.1-1 .2-1.5L20.5 2.8c.9-.3 1.6.2 1.4 1.5Z"/></svg>
-          <div>Telegram<small>@thecrashO</small></div></a>
         <a href="tel:+959424469168">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z"/></svg>
           <div>ဖုန်း / Viber<small>09 424 469 168</small></div></a>
-        <a href="mailto:thecrashoai@gmail.com?subject=Myanmar%20Flow%20Code">
+        <a href="mailto:thecrashoai@gmail.com?subject=Myanmar%20Flow">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
           <div>Email<small>thecrashoai@gmail.com</small></div></a>
       </div>
     </div>
-    <form class="form" id="order" onsubmit="return false">
-      <label for="name">နာမည်</label>
-      <input id="name" autocomplete="name" placeholder="ဥပမာ Ko Aung">
+    <form class="form" id="order" action="/buy" method="get">
       <label id="packLabel" for="minutes">ဘယ်နှစ်မိနစ် ယူမလဲ <span style="font-weight:400;color:var(--muted)">(တစ်မိနစ် 99 Ks)</span></label>
       <div class="choices" role="radiogroup" aria-labelledby="packLabel">
         <input type="radio" name="pack" id="m30" value="30"><label for="m30">30 မိနစ်</label>
         <input type="radio" name="pack" id="m60" value="60" checked><label for="m60">1 နာရီ</label>
         <input type="radio" name="pack" id="m180" value="180"><label for="m180">3 နာရီ</label>
-        <input type="radio" name="pack" id="mtrial" value=""><label for="mtrial">အခမဲ့ ၅ မိနစ် စမ်းမယ်</label>
-        <input type="radio" name="pack" id="pq" value=""><label for="pq">မေးချင်တာပဲ ရှိတယ်</label>
       </div>
-      <div class="mins-row" id="minsRow">
-        <input id="minutes" type="number" min="1" max="100000" step="1" inputmode="numeric" value="60" aria-label="မိနစ်">
-        <span>မိနစ် = <b id="total">5,940 Ks</b></span>
+      <div class="mins-row">
+        <input id="minutes" name="min" type="number" min="10" max="6000" step="1" inputmode="numeric" value="60" aria-label="မိနစ်">
+        <span>မိနစ် = <b id="total">5,940 Ks</b> <small id="valid" style="color:var(--muted)">· သက်တမ်း ၉၀ ရက်</small></span>
       </div>
-      <label id="osLabel">ဘယ်စက်မှာ သုံးမလဲ</label>
-      <div class="choices" role="radiogroup" aria-labelledby="osLabel">
-        <input type="radio" name="os" id="win" value="Windows" checked><label for="win">Windows</label>
-        <input type="radio" name="os" id="macm" value="Mac (Apple Silicon)"><label for="macm">Mac (M1–M4)</label>
-        <input type="radio" name="os" id="maci" value="Mac (Intel)"><label for="maci">Mac (Intel)</label>
-      </div>
-      <label id="codeLabel" for="code">ငွေဖြည့်မှာလား? Code အဟောင်း <span style="font-weight:400;color:var(--muted)">(ရှိရင်)</span></label>
-      <input id="code" placeholder="MF-XXXX-XXXX" autocomplete="off" spellcheck="false">
-      <div class="preview" id="preview" aria-live="polite"></div>
-      <div class="send">
-        <a class="btn tg" id="toTelegram" href="https://t.me/thecrashO" target="_blank" rel="noopener">Telegram နဲ့ ပို့မယ်</a>
-      </div>
-      <p id="copied"></p>
-      <div class="pay" id="pay">
-        <p class="pay-title">ငွေပေးချေရန် <span id="payTotal"></span></p>
-        <div class="pay-row">
-          <span class="wallets"><b>KBZPay</b> · <b>WavePay</b></span>
-          <button type="button" class="pay-no" id="copyNo" aria-label="ဖုန်းနံပါတ် ကူးမယ်">09 424 469 168 <small id="copyNoTip">ကူးမယ်</small></button>
-        </div>
-        <ol>
-          <li>အပေါ်က ခလုတ်နဲ့ Telegram ပို့ပါ</li>
-          <li>ဒီနံပါတ်ကို KBZPay ဒါမှမဟုတ် WavePay နဲ့ လွှဲပါ။ လွှဲတဲ့အခါ <b>Note</b> မှာ <b>Myanmar Flow</b> လို့ ရေးပေးပါ</li>
-          <li>ငွေလွှဲ screenshot ကို Telegram မှာ ပို့ပါ — Code ကို ချက်ချင်း ပို့ပေးပါမယ်</li>
-        </ol>
-      </div>
+      <label for="code">ငွေဖြည့်မှာလား? Code အဟောင်း <span style="font-weight:400;color:var(--muted)">(ရှိရင်)</span></label>
+      <input id="code" name="code" placeholder="MF-XXXX-XXXX" autocomplete="off" spellcheck="false">
+      <div class="send"><button class="btn solid wide" type="submit">ဝယ်မယ် →</button></div>
+      <ul class="pay-steps">
+        <li><b>KBZPay</b> · <b>WavePay</b> နဲ့ ပေးလို့ရ</li>
+        <li>Screenshot ထည့်လိုက်ရင် Code ကို ချက်ချင်း ရ</li>
+        <li>Code ရှိပြီးသားဆိုရင် အဲဒီ Code ကိုပဲ ဖြည့်ပေး</li>
+      </ul>
     </form>
   </div>
 </section>
@@ -662,66 +636,23 @@
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var PRICE = 99;  // Ks a minute
-  function ks(mins) { return (mins * PRICE).toLocaleString("en-US") + " Ks"; }
-  function asking() { return $("pq").checked; }
-  function trial() { return $("mtrial").checked; }
-  function picked(name) { var el = document.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ""; }
-  function message() {
-    var name = $("name").value.trim(), os = picked("os");
-    var mins = asking() || trial() ? 0 : Math.round(Number($("minutes").value) || 0);
-    var pack = mins > 0 ? mins + " မိနစ် (" + ks(mins) + ")" : "";
-    var code = $("code").value.trim().toUpperCase();
-    var lines = ["မင်္ဂလာပါ" + (name ? "၊ " + name + " ပါ" : "") + "။"];
-    if (trial()) lines.push("Myanmar Flow ကို အခမဲ့ ၅ မိနစ် စမ်းသုံးဖို့ Code လိုချင်ပါတယ်။");
-    else if (pack && code) lines.push("Myanmar Flow Code " + code + " ကို " + pack + " ငွေဖြည့်ချင်ပါတယ်။");
-    else if (pack) lines.push("Myanmar Flow Code " + pack + " ဝယ်ချင်ပါတယ်။");
-    else lines.push("Myanmar Flow အကြောင်း မေးချင်တာ ရှိလို့ပါ။");
-    lines.push("စက်: " + os);
-    return lines.join("\n");
-  }
+  var chips = ["m30", "m60", "m180"];
   function update() {
-    var mins = Math.round(Number($("minutes").value) || 0);
-    $("minsRow").style.opacity = asking() || trial() ? ".45" : "";
-    $("codeLabel").style.opacity = $("code").style.opacity = trial() ? ".45" : "";
-    $("total").textContent = mins > 0 ? ks(mins) : "—";
-    // Nothing to pay for a free trial or a question.
-    $("pay").hidden = asking() || trial();
-    $("payTotal").textContent = mins > 0 ? "· " + ks(mins) : "";
-    var text = message();
-    $("preview").textContent = text;
-    $("toTelegram").href = "https://t.me/thecrashO?text=" + encodeURIComponent(text);
+    var m = Math.round(Number($("minutes").value) || 0);
+    $("total").textContent = m > 0 ? (m * PRICE).toLocaleString("en-US") + " Ks" : "—";
+    $("valid").textContent = "· သက်တမ်း " + (m >= 180 ? "၁ နှစ်" : m >= 60 ? "၉၀ ရက်" : "၃၀ ရက်");
   }
-  document.getElementById("order").addEventListener("input", update);
-  document.getElementById("order").addEventListener("change", update);
-  // A minutes chip or a price card's button fills in the minutes; typing a number picks the matching chip, if any.
-  function setMinutes(m) {
-    $("minutes").value = m;
-    ["m30", "m60", "m180"].forEach(function (id) { $(id).checked = $(id).value === String(m); });
-    update();
-  }
-  ["m30", "m60", "m180"].forEach(function (id) { $(id).addEventListener("change", function () { setMinutes($(id).value); }); });
+  chips.forEach(function (id) { $(id).addEventListener("change", function () { $("minutes").value = $(id).value; update(); }); });
   $("minutes").addEventListener("input", function () {
-    var m = $("minutes").value;
-    $("mtrial").checked = $("pq").checked = false;  // typing minutes means buying
-    ["m30", "m60", "m180"].forEach(function (id) { $(id).checked = $(id).value === m; });
+    chips.forEach(function (id) { $(id).checked = $(id).value === $("minutes").value; });
+    update();
   });
-  document.querySelectorAll("[data-min]").forEach(function (a) {
-    a.addEventListener("click", function () { setMinutes(a.getAttribute("data-min")); });
-  });
-  document.querySelectorAll("[data-trial]").forEach(function (a) {
-    a.addEventListener("click", function () { $("mtrial").checked = true; update(); });
-  });
-  $("copyNo").addEventListener("click", function () {
-    try { navigator.clipboard.writeText("09424469168").then(function () { $("copyNoTip").textContent = "ကူးပြီး ✓"; }); } catch (e) {}
-  });
-  // Telegram fills the text in from the link on most apps; copy it too in case one doesn't.
-  $("toTelegram").addEventListener("click", function () {
-    var text = message();
-    try {
-      navigator.clipboard.writeText(text).then(function () {
-        $("copied").textContent = "Telegram မှာ စာ ရေးပြီးသား ဖြစ်နေပါမယ်။ မပါလာရင် Paste လုပ်ပြီး ပို့ပါ (Copy ကူးထားပြီးပါပြီ)";
-      });
-    } catch (e) {}
+  // Only the minutes and code go to /buy, and an empty code is left out.
+  $("order").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var q = "?min=" + encodeURIComponent($("minutes").value);
+    if ($("code").value.trim()) q += "&code=" + encodeURIComponent($("code").value.trim());
+    location.href = "/buy" + q;
   });
   update();
 })();
