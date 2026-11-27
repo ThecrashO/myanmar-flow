@@ -47,7 +47,9 @@ export const adminPage = `<!doctype html>
       <input id="minutes" type="number" min="0" step="1" value="60" style="width:110px" aria-label="Minutes">
       <span class="muted">မိနစ်</span>
       <button id="create" class="primary">Code အသစ် ထုတ်မယ်</button>
+      <button id="trial">အခမဲ့ စမ်း ၅ မိနစ်</button>
     </div>
+    <p class="muted" style="margin:6px 0 0">အခမဲ့ စမ်းခလုတ်က ၅ မိနစ် Code ကို "trial:" ဆိုတဲ့ နာမည်နဲ့ ထုတ်ပေးပါတယ်။ ကြိုက်ရင် အဲဒီ Code ကိုပဲ + မိနစ် နဲ့ ဖြည့်ပေးပါ။</p>
     <p id="msg"></p>
   </div>
   <div class="card scroll">
@@ -61,7 +63,7 @@ export const adminPage = `<!doctype html>
 const $ = (id) => document.getElementById(id);
 const store = { get() { try { return sessionStorage.getItem("mf_admin") || ""; } catch { return ""; } },
                 set(v) { try { sessionStorage.setItem("mf_admin", v); } catch {} } };
-let token = store.get(), fresh = null;
+let token = store.get(), fresh = null, all = [];
 $("token").value = token;
 
 async function api(path, options = {}) {
@@ -79,6 +81,7 @@ function button(td, label, onClick, cls) { const b = document.createElement("but
 
 async function load() {
   const { codes } = await api("/codes");
+  all = codes;
   const tbody = $("rows");
   tbody.textContent = "";
   if (!codes.length) { const r = tbody.insertRow(); cell(r, "Code မရှိသေးပါ", "muted").colSpan = 6; return; }
@@ -117,13 +120,24 @@ $("login").onclick = async () => {
   token = $("token").value.trim(); store.set(token);
   try { await load(); say("ဝင်ပြီးပါပြီ"); } catch (e) { say(e.message, true); }
 };
-$("create").onclick = async () => {
-  const minutes = Number($("minutes").value);
-  if (!(minutes >= 0)) return say("မိနစ် ထည့်ပါ", true);
+async function create(note, minutes) {
   try {
-    const { code } = await api("/codes", { method: "POST", body: JSON.stringify({ note: $("note").value.trim(), minutes }) });
+    const { code } = await api("/codes", { method: "POST", body: JSON.stringify({ note, minutes }) });
     fresh = code; $("note").value = ""; say(code + " ထုတ်ပြီးပါပြီ — Copy နှိပ်ပြီး ပို့ပေးပါ"); load();
   } catch (e) { say(e.message, true); }
+}
+$("create").onclick = () => {
+  const minutes = Number($("minutes").value);
+  if (!(minutes >= 0)) return say("မိနစ် ထည့်ပါ", true);
+  create($("note").value.trim(), minutes);
+};
+// A free 5-minute code, marked "trial:" so it's easy to spot (and to see who already had one).
+$("trial").onclick = () => {
+  const who = $("note").value.trim();
+  if (!who) return say("ဘယ်သူ့အတွက်လဲ ဆိုတာ အရင်ထည့်ပါ (တစ်ယောက် တစ်ခါပဲ ပေးဖို့)", true);
+  const had = all.find((c) => (c.note || "").toLowerCase() === ("trial: " + who).toLowerCase());
+  if (had && !confirm(who + " က " + had.code + " နဲ့ အခမဲ့ စမ်းပြီးသားပါ။ နောက်တစ်ခု ထပ်ပေးမလား?")) return;
+  create("trial: " + who, 5);
 };
 if (token) load().catch((e) => say(e.message, true));
 </script>

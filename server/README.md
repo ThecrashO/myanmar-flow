@@ -58,6 +58,9 @@ and run `npm run deploy`. `/health` answers with plain text for uptime checks.
 Open `https://<your address>/admin` and enter the admin token. From there you can:
 
 - **Code အသစ် ထုတ်မယ်**: make a code with some minutes. Copy it and send it to the buyer.
+- **အခမဲ့ စမ်း ၅ မိနစ်**: make a free 5-minute trial code (about 225 Ks of Gemini) for the name
+  in the box. Its note starts with `trial:`, and the page warns you if that name already had one.
+  The product page offers one free trial per person; if they like it, top up that same code.
 - **+ မိနစ်**: add minutes when they top up. They keep the same code.
 - **ပိတ်**: switch a code off (and back on).
 - **ဖျက်**: delete a code for good, with its minutes and history. It asks first and can't be
@@ -72,6 +75,37 @@ code with exactly that many minutes. Examples:
 | 30 | 2,970 Ks |
 | 60 | 5,940 Ks |
 | 180 | 17,820 Ks |
+
+## Backups
+
+The minutes left on codes are money people have already paid, so keep copies. In this folder:
+
+```bash
+npm run backup
+```
+
+This saves the whole database (codes, minutes, usage history) as
+`backups/myanmar-flow-<date>.sql` and keeps the newest 12. The files contain every code, so
+`backups/` is gitignored: don't put them anywhere public.
+
+To run it every Sunday at 9 pm on this PC (Windows runs it later if the PC was off), paste this
+into PowerShell once:
+
+```powershell
+$a = New-ScheduledTaskAction -Execute "npm.cmd" -Argument "run backup" -WorkingDirectory "D:\Second Brain\Projects\Crash Lab\Myanmar flow\server"
+$t = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 9pm
+Register-ScheduledTask -TaskName "Myanmar Flow backup" -Action $a -Trigger $t -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable)
+```
+
+To restore a backup (this writes over the live database, so be sure):
+
+```bash
+npx wrangler d1 execute myanmar-flow --remote --file backups/<file>.sql
+```
+
+Cloudflare also keeps its own restore points for recent days (D1 Time Travel,
+`npx wrangler d1 time-travel info myanmar-flow`), which helps after a mistake but isn't a copy
+you hold yourself.
 
 ## Local testing
 
