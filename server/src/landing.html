@@ -40,8 +40,16 @@
   .tint { background: var(--tint); }
 
   /* nav */
-  nav { position: absolute; inset: 0 0 auto; z-index: 5; }
-  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+  /* A bar that stays at the top; it turns solid once the page scrolls. */
+  nav { position: fixed; inset: 0 0 auto; z-index: 50; transition: background .2s, box-shadow .2s; }
+  nav.solid, nav.open { background: rgba(7, 18, 51, .94); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+                        box-shadow: 0 1px 0 rgba(255, 255, 255, .08); }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 64px; }
+  [id] { scroll-margin-top: 72px; }
+  .menu { display: none; background: rgba(255, 255, 255, .1); border: 0; color: #fff; width: 40px; height: 40px;
+          border-radius: 10px; cursor: pointer; align-items: center; justify-content: center; flex: none; }
+  .menu svg { width: 22px; height: 22px; }
+  .navend { display: flex; align-items: center; gap: 10px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #fff; text-decoration: none; font-size: 17px; }
   .brand svg { width: 32px; height: 32px; }
   .navlinks { display: flex; gap: 26px; align-items: center; }
@@ -49,7 +57,15 @@
   .navlinks a:hover { color: #fff; }
   .navlinks a.pill { background: #fff; color: var(--hero); padding: 8px 16px; border-radius: 10px; }
   .navlinks a.pill:hover, .navlinks a.pill:active { background: #dbe6ff; color: var(--hero); }
-  @media (max-width: 760px) { .navlinks a:not(.pill) { display: none; } }
+  @media (max-width: 760px) {
+    .menu { display: inline-flex; }
+    .navlinks a:not(.pill) { display: none; }
+    /* ☰ opens the links as a panel under the bar. */
+    nav.open .navlinks { position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0;
+                         padding: 4px 16px 18px; background: rgba(7, 18, 51, .97); box-shadow: 0 12px 24px rgba(0, 0, 0, .3); }
+    nav.open .navlinks a:not(.pill) { display: block; padding: 15px 2px; font-size: 16px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+    nav.open .navlinks a.pill { margin-top: 14px; text-align: center; padding: 12px; }
+  }
 
   /* hero */
   .hero { position: relative; overflow: hidden; color: #fff; padding: 140px 0 0;
@@ -280,12 +296,17 @@
       <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#2f6bff"/><rect x="24" y="12" width="16" height="26" rx="8" fill="#fff"/><path d="M17 31a15 15 0 0 0 30 0M32 46v8M24 54h16" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></svg>
       <span>Myanmar Flow</span>
     </a>
-    <div class="navlinks">
-      <a href="#how">အသုံးပြုပုံ</a>
-      <a href="#pricing">ဈေးနှုန်း</a>
-      <a href="#guide">Install</a>
-      <a href="#faq">မေးလေ့ရှိတာ</a>
-      <a class="pill" href="/buy">Code ဝယ်ရန်</a>
+    <div class="navend">
+      <div class="navlinks" id="navlinks">
+        <a href="#how">အသုံးပြုပုံ</a>
+        <a href="#pricing">ဈေးနှုန်း</a>
+        <a href="#guide">Install</a>
+        <a href="#faq">မေးလေ့ရှိတာ</a>
+        <a class="pill" href="/buy">Code ဝယ်ရန်</a>
+      </div>
+      <button class="menu" type="button" aria-label="Menu" aria-expanded="false" aria-controls="navlinks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
     </div>
   </div>
 </nav>
@@ -495,5 +516,16 @@
   </div>
 </footer>
 
+<script>
+(function () {
+  var nav = document.querySelector("nav"), btn = nav.querySelector(".menu");
+  function solid() { nav.classList.toggle("solid", window.scrollY > 20); }
+  function open(on) { nav.classList.toggle("open", on); btn.setAttribute("aria-expanded", on ? "true" : "false"); }
+  btn.addEventListener("click", function () { open(!nav.classList.contains("open")); });
+  nav.querySelectorAll(".navlinks a").forEach(function (a) { a.addEventListener("click", function () { open(false); }); });
+  window.addEventListener("scroll", solid, { passive: true });
+  solid();
+})();
+</script>
 </body>
 </html>
