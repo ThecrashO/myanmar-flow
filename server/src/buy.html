@@ -116,7 +116,7 @@
     </div>
     <div class="card" id="shotCard">
       <h2>② Screenshot ထည့်ပါ</h2>
-      <p class="muted">AI က screenshot ကို စစ်ပြီး ငွေဝင်တာ အတည်ဖြစ်တာနဲ့ Code ကို ဒီမှာ တန်းပြပါမယ်။</p>
+      <p class="muted">AI က screenshot ကို ချက်ချင်း စစ်ပြီး Code ကို ဒီမှာ တန်းပြပါမယ်။</p>
       <label class="btn" for="shot" id="shotBtn">📷 Screenshot ရွေးမယ်</label>
       <input id="shot" type="file" accept="image/*">
       <div class="status" id="status"></div>
@@ -235,9 +235,16 @@
       $("payTitle").textContent = "ပြီးပါပြီ";
       return;
     }
-    if (o.status === "checking") {
+    if (o.status === "checking" || o.status === "review") {
       $("shotBtn").classList.add("hide");
-      status("wait", '<span class="spin"></span>Screenshot မှန်ပါတယ် ✓ ငွေဝင်တာကို အတည်ပြုနေပါတယ်… များသောအားဖြင့် ၁-၂ မိနစ် ကြာပါတယ်။ ဒီ page ကို ဖွင့်ထားပါ။');
+      status("wait", '<span class="spin"></span>Screenshot ရပါပြီ ✓ ငွေဝင်တာကို စစ်ပြီးတာနဲ့ Code ကို ဒီမှာ ပြပါမယ်။ ' +
+        'ဒီ page ကို ပိတ်လိုက်လည်း ဒီ link (ဒါမှမဟုတ် ဒီဖုန်းက /buy) နဲ့ ပြန်ဝင်ကြည့်လို့ ရပါတယ်။');
+    } else if (o.status === "rejected" || o.status === "revoked") {
+      clearTimeout(timer);
+      save("mf_order", null);
+      $("shotBtn").classList.add("hide");
+      status("bad", o.reason || "ဒီ order ကို အတည်မပြုနိုင်ပါ။");
+      return;
     } else if (o.reason) {
       $("shotBtn").classList.remove("hide");
       $("shotBtn").textContent = "📷 Screenshot ပြန်ရွေးမယ်";
@@ -250,7 +257,7 @@
     clearTimeout(timer);
     timer = setTimeout(function () {
       api("/mf/orders/" + order.id).then(function (o) { order = o; render(); }).catch(function () { poll(); });
-    }, order.status === "checking" ? 4000 : 8000);
+    }, order.status === "new" ? 8000 : 5000);
   }
 
   // Phone screenshots can be several MB; a 1600px JPEG is plenty for reading a receipt.

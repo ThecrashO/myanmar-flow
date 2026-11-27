@@ -27,15 +27,17 @@ CREATE TABLE IF NOT EXISTS orders (
   amount INTEGER NOT NULL,          -- Ks to pay, unique among unpaid orders
   topup TEXT,                       -- code to top up, or NULL for a new code
   code TEXT,                        -- the code given, once paid
-  status TEXT NOT NULL,             -- new | checking (screenshot passed) | paid
-  reason TEXT,                      -- why the last screenshot failed, in Burmese
+  status TEXT NOT NULL,             -- new | review (owner checks) | paid | rejected | revoked
+  reason TEXT,                      -- what the buyer is told, in Burmese
+  doubts TEXT,                      -- why the owner was asked to check, in Burmese
   txn TEXT,                         -- transaction ID read from the screenshot
   wallet TEXT,
   shot_tries INTEGER NOT NULL DEFAULT 0,
   net TEXT,                         -- hashed network, for rate limits
   name TEXT,                        -- the buyer, so they can get a lost code back
   email TEXT,
-  payment_id INTEGER,               -- payments row that paid it (negative: approved by hand)
+  payment_id INTEGER,               -- payments row that paid it (negative: no notification)
+  paid_by TEXT,                     -- ai (screenshot alone) | owner | phone
   created_at TEXT NOT NULL,
   paid_at TEXT
 );
@@ -65,4 +67,10 @@ CREATE TABLE IF NOT EXISTS trials (
 CREATE TABLE IF NOT EXISTS recoveries (
   net TEXT NOT NULL,                -- hashed network, to limit lost-code lookups
   at TEXT NOT NULL
+);
+
+-- Small server settings, e.g. the owner's Telegram chat.
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
 );

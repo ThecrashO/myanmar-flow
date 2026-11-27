@@ -61,8 +61,9 @@ export const adminPage = `<!doctype html>
   </div>
   <div class="card">
     <h2>Shop · အလိုလို ရောင်းတာ</h2>
-    <p class="muted">Screenshot (AI စစ်) နဲ့ ဖုန်းက "ငွေဝင်" notification ကိုက်တာနဲ့ Code ကို အလိုလို ပေးပါတယ်။
-      ဖုန်းချိတ်ရန် link: <button id="copyPhone">Copy</button> <span id="phoneSeen"></span></p>
+    <p class="muted">AI က screenshot ကို စစ်ပြီး မှန်ရင် Code ကို ချက်ချင်း ပေးပါတယ်။ သံသယရှိရင် "စစ်ရန်" မှာ ထားပြီး Telegram ကို ပို့ပါတယ်။</p>
+    <p>Telegram: <span id="tgState" class="muted">—</span> <button id="tgLink">Telegram ချိတ်မယ်</button> <button id="tgTest">စမ်းပို့မယ်</button></p>
+    <p class="muted">ဖုန်း notification (မထည့်လည်းရ): <button id="copyPhone">Copy</button> <span id="phoneSeen"></span></p>
     <div class="scroll"><table>
       <thead><tr><th>Order</th><th>မိနစ်</th><th>ငွေ</th><th>အခြေအနေ</th><th>Code</th><th>အချိန်</th><th></th></tr></thead>
       <tbody id="orders"></tbody>
@@ -135,10 +136,21 @@ async function load() {
 }
 
 const ks = (n) => n == null ? "—" : Number(n).toLocaleString("en-US") + " Ks";
-const STATUS = { new: "Screenshot စောင့်", checking: "ဖုန်းအတည်ပြုချက် စောင့်", paid: "✓ ရပြီ" };
+const STATUS = { new: "Screenshot စောင့်", checking: "ဖုန်းအတည်ပြုချက် စောင့်", review: "🔎 စစ်ရန်", paid: "✓ ရပြီ",
+                 rejected: "✗ ငြင်းပြီး", revoked: "↩️ ပြန်ရုပ်သိမ်းပြီး" };
+const BY = { ai: " (AI)", owner: " (လက်နဲ့)", phone: " (ဖုန်း)" };
+
+async function decide(o, action, question) {
+  if (!confirm(question)) return;
+  try { const res = await api("/shop/" + o.id + "/" + action, { method: "POST", body: "{}" }); say(res.said); load(); }
+  catch (e) { say(e.message, true); }
+}
 
 async function loadShop() {
-  const { orders, payments, phone_url } = await api("/shop");
+  const { orders, payments, phone_url, telegram } = await api("/shop");
+  $("tgState").textContent = !telegram.bot ? "TELEGRAM_BOT_TOKEN secret မထည့်ရသေး" : telegram.linked ? "✓ ချိတ်ပြီး" : "Bot ရှိပြီ၊ မချိတ်ရသေး";
+  $("tgLink").disabled = !telegram.bot;
+  $("tgTest").disabled = !telegram.linked;
   phoneUrl = phone_url;
   $("copyPhone").disabled = !phone_url;
   $("phoneSeen").textContent = !phone_url ? "(PHONE_TOKEN secret မထည့်ရသေး)"
@@ -150,15 +162,15 @@ async function loadShop() {
     cell(r, o.id.slice(0, 6) + (o.topup ? " (ဖြည့်)" : "") + (o.name ? " · " + o.name : "") + (o.email ? " · " + o.email : ""));
     cell(r, o.minutes, "num");
     cell(r, ks(o.amount), "num");
-    cell(r, (STATUS[o.status] || o.status) + (o.reason ? " — " + o.reason : "") + (o.payment_id < 0 ? " (လက်နဲ့)" : ""), o.status === "paid" ? "" : "muted");
+    const why = o.status === "review" ? o.doubts : o.status === "new" ? o.reason : null;
+    cell(r, (STATUS[o.status] || o.status) + (o.status === "paid" ? BY[o.paid_by] || "" : "") + (why ? " — " + why : "")
+      + (o.txn ? " · Txn " + o.txn : ""), o.status === "paid" ? "" : "muted");
     cell(r, o.code || "—");
     cell(r, when(o.created_at), "muted");
     const act = r.insertCell();
-    if (o.status !== "paid") button(act, "ငွေရပြီ", async () => {
-      if (!confirm(ks(o.amount) + " ကို တကယ် ရထားတာ သေချာလား? Code ကို ချက်ချင်း ပေးပါမယ်။")) return;
-      try { const res = await api("/shop/" + o.id + "/approve", { method: "POST", body: "{}" }); say("Order " + o.id.slice(0, 6) + " → " + res.code); load(); }
-      catch (e) { say(e.message, true); }
-    });
+    if (o.status !== "paid") button(act, "ငွေရပြီ", () => decide(o, "approve", ks(o.amount) + " ကို တကယ် ရထားတာ သေချာလား? Code ကို ချက်ချင်း ပေးပါမယ်။"));
+    if (o.status === "review" || o.status === "checking") button(act, "ငြင်းမယ်", () => decide(o, "reject", ks(o.amount) + " မဝင်ဘူးလား? Code မပေးဘဲ ငြင်းပါမယ်။"), "danger");
+    if (o.status === "paid") button(act, "ပြန်ရုပ်သိမ်း", () => decide(o, "undo", ks(o.amount) + " မဝင်ဘူးလား? ပေးထားတဲ့ " + o.minutes + " မိနစ်ကို ပြန်နုတ်ပါမယ်။"), "danger");
   }
   const pb = $("payments"); pb.textContent = "";
   if (!payments.length) cell(pb.insertRow(), "မရှိသေးပါ", "muted").colSpan = 5;
@@ -171,6 +183,18 @@ async function loadShop() {
     cell(r, p.order_id ? p.order_id.slice(0, 6) : "—");
   }
 }
+$("tgLink").onclick = async () => {
+  const tab = window.open("about:blank", "_blank");  // opened now, so pop-up blockers allow it
+  try {
+    const { link } = await api("/shop/telegram", { method: "POST", body: "{}" });
+    if (tab) tab.location = link; else location.href = link;
+    say("Telegram ပွင့်လာရင် START နှိပ်ပါ။ ပြီးရင် ဒီ page ကို refresh လုပ်ပါ။");
+  } catch (e) { if (tab) tab.close(); say(e.message, true); }
+};
+$("tgTest").onclick = async () => {
+  try { await api("/shop/telegram/test", { method: "POST", body: "{}" }); say("Telegram ကို စမ်းစာ ပို့ပြီးပါပြီ"); }
+  catch (e) { say(e.message, true); }
+};
 $("copyPhone").onclick = () => phoneUrl && navigator.clipboard.writeText(phoneUrl).then(() => say("ဖုန်းချိတ်ရန် link ကူးပြီးပါပြီ — MacroDroid ထဲ Paste လုပ်ပါ"));
 
 $("login").onclick = async () => {

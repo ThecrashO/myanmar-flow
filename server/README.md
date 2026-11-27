@@ -51,20 +51,22 @@ them once when fewer than 10 minutes remain.
 (with the VPN note), prices, how to start, FAQ, and contact. Edit it in `src/landing.html` and
 run `npm run deploy`. `/health` answers with plain text for uptime checks.
 
-Codes sell themselves at `/buy` (`src/buy.html`, server side in `src/shop.js`), with nobody at
-the till:
+Codes sell themselves at `/buy` (`src/buy.html`, server side in `src/shop.js`):
 
 1. The buyer picks minutes and gives a name and email (for getting a lost code back). They get
    an exact amount to pay. Amounts are kept unique among unpaid orders (5,940, then 5,941 ...),
    so a payment can only belong to one order.
 2. They pay 09 424 469 168 with KBZPay or WavePay and upload the receipt screenshot. Gemini
-   reads it: a finished transfer, the right amount and receiver, and a transaction ID that no
-   other order used. If something is off, the page says what in Burmese.
-3. Your Android phone forwards each wallet notification to the server (MacroDroid, below).
-   Gemini reads that too.
-4. When the screenshot and a real "money received" notification agree, the order is paid: a
-   new code is made (or the buyer's code is topped up) and shown on the page. A screenshot on
-   its own never gives minutes, because screenshots can be edited or reused.
+   reads it at once: a finished transfer, the right amount and receiver, a transaction ID no
+   other order used, a time after the order was made, and no sign of editing. Mistakes (wrong
+   amount, not a receipt ...) are explained to the buyer in Burmese so they can try again.
+3. **A clean receipt pays straight away**: a new code is made (or the buyer's code is topped up)
+   and shown on the page. You get the sale on Telegram with the screenshot and a
+   **↩️ ပြန်ရုပ်သိမ်း** button: if the money isn't in your wallet history, press it and the
+   minutes are taken back (a code made by that order is also switched off).
+4. **A doubtful receipt waits for you** (no transaction ID, sent before the order, looks edited,
+   unknown wallet ...). The buyer is told it's being checked; you get it on Telegram with the
+   reasons and **✅ ငွေရပြီ / ❌ ငြင်းမယ်** buttons. The admin page has the same buttons.
 
 A buyer who lost a code gets it back on `/buy` with their email and the transaction ID from
 their wallet history (both must match). The app's 💳 menu item opens `/buy` with the user's code
@@ -76,24 +78,23 @@ year, and a free trial 7 days. A top-up moves the date to the later of the curre
 top-up's own, and revives an expired code with its old minutes. Codes made before expiry
 existed (the ones with no date) never expire.
 
-### Phone setup (once)
+### Telegram setup (once)
 
-On the Android phone that receives the KBZPay / WavePay money:
+1. In Telegram, open **@BotFather**, send `/newbot`, and pick a name and a username ending in
+   `bot`. BotFather replies with a token like `123456789:AA...`. Keep it secret.
+2. In this folder run `npx wrangler secret put TELEGRAM_BOT_TOKEN` and paste the token.
+3. On the admin page's Shop section press **Telegram ချိတ်မယ်**. Telegram opens your bot: press
+   **START**. Refresh the admin page: it says ✓ ချိတ်ပြီး. **စမ်းပို့မယ်** sends a test message.
 
-1. Install **MacroDroid** from the Play Store and allow **notification access** when asked.
-2. **Add macro → Trigger → Notification → Notification received**. Pick the **KBZPay** and
-   **WavePay** apps, with any content.
-3. **Action → Connectivity → HTTP request**: method **POST**, URL = the phone link from the admin
-   page (Shop → **Copy**). For the body, choose plain text and add the notification's title and
-   text from the magic-text (**…**) list.
-4. Save the macro. In the phone's settings, set MacroDroid's battery use to **Unrestricted** so
-   Android doesn't stop it.
-5. Check: the admin page's Shop section shows the time of the last notification it received.
+Only the chat that pressed that one-time START link can press the buttons. To move the alerts to
+another Telegram account, press **Telegram ချိတ်မယ်** again from that account.
 
-The phone link holds a secret (`PHONE_TOKEN`, set with `npx wrangler secret put PHONE_TOKEN`).
-If it ever leaks, put a new one and update the macro. If the phone is off when someone pays,
-their order waits; once the phone sends the notification it completes by itself. For anything
-stuck, the admin page has a **ငွေရပြီ** button that pays an order by hand.
+### Phone notifications (optional)
+
+An Android phone can also forward wallet notifications (MacroDroid → HTTP POST to the phone
+link on the admin page, which holds the `PHONE_TOKEN` secret). A matching "money received"
+notification then approves an order that is waiting in review without you pressing anything.
+Not needed: on some phones the wallet apps don't show notifications at all.
 
 ## Selling minutes by hand
 
@@ -157,6 +158,7 @@ Make a `.dev.vars` file (it is gitignored) containing the secrets:
 GEMINI_API_KEY=...
 ADMIN_TOKEN=...
 PHONE_TOKEN=...
+TELEGRAM_BOT_TOKEN=...
 ```
 
 Then run:
@@ -180,9 +182,10 @@ root with the app's Python:
 - `server_test.py` checks the server itself: admin login, balances, batch, clean-up and Live
   transcription, what each costs, refused models and prompts, and empty or switched-off codes.
 - `app_test.py` runs the app's own functions with a code, including the Burmese error messages.
-- `shop_test.py` runs the whole shop against a **local** server only (it makes fake receipts and
-  phone notifications): unique amounts, every kind of bad screenshot, matching in either order,
-  top-ups, lost-code recovery, validity, manual approve and free trials. See its first lines.
+- `shop_test.py` runs the whole shop against a **local** server only (fake receipts, phone
+  notifications and Telegram button presses): unique amounts, every kind of bad screenshot,
+  review, approve / reject / undo, top-ups, lost-code recovery, validity and free trials. See its
+  first lines.
 
 Both use the live server by default. To test a local `npm run dev` instead, pass its address,
 for example `http://127.0.0.1:8787`. They make small test codes (named `server_test` and

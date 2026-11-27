@@ -4,15 +4,17 @@
 //    amount to pay. Amounts are kept unique among open orders (5,940, then 5,941 ...),
 //    so a payment of that amount can only belong to one order.
 // 2. They pay 09 424 469 168 with KBZPay or WavePay and upload the receipt screenshot.
-//    Gemini reads it: a finished transfer, the right amount, the right receiver, and a
-//    transaction ID no other order has used.
-// 3. The owner's Android phone forwards each wallet notification (MacroDroid, see the
-//    README) to /mf/pay-inbox/<PHONE_TOKEN>. Gemini reads that too.
-// 4. When a screenshot and a real "money received" notification agree (same amount, and
-//    the same transaction ID when both show one), the order is paid: a new code is made,
-//    or the buyer's code is topped up, and the app or page picks it up on its next check.
+//    Gemini reads it at once: a finished transfer, the right amount and receiver, a
+//    transaction ID no other order has used, a time after the order was made, and no
+//    sign of editing.
+// 3. A clean receipt pays the order there and then: a new code is made, or the buyer's
+//    code is topped up. The owner gets each sale on Telegram with the screenshot and an
+//    "undo" button, to use if the money never arrived in the wallet.
+// 4. A doubtful receipt (no transaction ID, odd time, looks edited ...) puts the order
+//    "in review": the owner gets it on Telegram with approve / reject buttons.
 //
-// A screenshot alone never gives minutes, because a screenshot can be edited or reused.
+// Optional: an Android phone can forward wallet notifications (MacroDroid) to
+// /mf/pay-inbox/<PHONE_TOKEN>; a matching "money received" approves an order in review.
 // Free trials: one 5-minute code per device, with per-network and per-day limits.
 
 import buyPage from "./buy.html";
@@ -34,6 +36,14 @@ const TRIAL_MINUTES = 5, TRIALS_PER_NETWORK = 2, TRIALS_PER_DAY = 40;
 const RECOVERIES_PER_HOUR = 10;          // per network
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,100}\.[^\s@]{2,}$/;
 
+// Order status: new (no good screenshot yet) | review (the owner checks it) | paid |
+// rejected (the owner found no money) | revoked (paid, then undone by the owner).
+// "checking" is from before screenshots could pay on their own.
+const WAITING = ["checking", "review"];
+const SAY_REVIEW = "Screenshot ရပါပြီ ✓ ငွေဝင်တာကို စစ်ပြီးတာနဲ့ Code ကို ဒီမှာ ပြပါမယ်။";
+const SAY_REJECTED = `ဒီငွေလွှဲကို အတည်မပြုနိုင်ပါ။ ငွေလွှဲခဲ့ရင် ${PAY_TO} ကို order နံပါတ်နဲ့ ဆက်သွယ်ပါ။`;
+const SAY_REVOKED = `ဒီ order ကို ပယ်ဖျက်လိုက်ပါတယ် (ငွေမဝင်ပါ)။ မှားနေရင် ${PAY_TO} ကို ဆက်သွယ်ပါ။`;
+
 const ago = (ms) => new Date(Date.now() - ms).toISOString();
 const DAY = 86_400_000;
 const ks = (n) => Number(n).toLocaleString("en-US");
@@ -53,6 +63,7 @@ export async function shop(request, env, url) {
   if (p === "/mf/recover" && post) return await recover(request, env);
   m = p.match(/^\/mf\/pay-inbox\/([^/]+)$/);
   if (m && post) return await inbox(request, env, decodeURIComponent(m[1]));
+  if (p === "/mf/tg" && post) return await telegramHook(request, env);
   return null;
 }
 
@@ -121,7 +132,7 @@ async function createOrder(request, env, url) {
 async function showOrder(env, url, id) {
   const order = await getOrder(env, id);
   if (!order) return fail(404, "mf_no_order", "No such order");
-  if (order.status === "checking") await matchOrder(env, order);  // in case a match was missed
+  if (WAITING.includes(order.status)) await matchOrder(env, order);  // in case a match was missed
   return json(publicOrder((await getOrder(env, id)) || order, url));
 }
 
@@ -160,9 +171,12 @@ const RECEIPT_SCHEMA = {
     receiver_name: { type: "STRING" },
     transaction_id: { type: "STRING" },
     time: { type: "STRING" },
+    time_iso: { type: "STRING" },
     note: { type: "STRING" },
+    looks_edited: { type: "BOOLEAN" },
+    doubt: { type: "STRING" },
   },
-  required: ["is_transfer_receipt", "succeeded", "wallet", "amount", "receiver_phone", "transaction_id"],
+  required: ["is_transfer_receipt", "succeeded", "wallet", "amount", "receiver_phone", "transaction_id", "time_iso", "looks_edited", "doubt"],
 };
 
 const RECEIPT_PROMPT = `This should be a screenshot of a money transfer made in a Myanmar mobile wallet app (KBZPay, also called KPay, or WavePay). Read it.
@@ -171,7 +185,10 @@ const RECEIPT_PROMPT = `This should be a screenshot of a money transfer made in 
 - wallet: "KBZPay", "WavePay" or "other".
 - amount: the amount transferred, in Kyats, as a plain number (5,941.00 Ks -> 5941). Not the balance and not a fee. 0 if not shown.
 - receiver_phone: the receiver's phone number exactly as shown, including masking such as ******9168. Empty if not shown.
-- receiver_name, transaction_id (the transaction number or ID), time, note (the remark or note): exactly as shown, empty if not shown.`;
+- receiver_name, transaction_id (the transaction number or ID), time, note (the remark or note): exactly as shown, empty if not shown.
+- time_iso: the transaction date and time rewritten as YYYY-MM-DDTHH:MM (as shown, Myanmar time). Empty if not shown.
+- looks_edited: true if anything suggests the image was edited or made up rather than a real, untouched phone screenshot of the wallet app: digits or text in a different font, size, colour or alignment from the rest, blurred or patched areas around the amount, ID, number or time, a layout that doesn't match the real app, or a drawing / mock-up. False for an ordinary screenshot.
+- doubt: if looks_edited, a short reason in English; otherwise empty.`;
 
 const NOTICE_SCHEMA = {
   type: "OBJECT",
@@ -205,10 +222,31 @@ function receiptProblem(r, order) {
   return null;
 }
 
+// "2026-11-27T22:41" read off the receipt, in Myanmar time (UTC+6:30).
+function receiptTime(s) {
+  const m = String(s || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return m ? Date.parse(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00+06:30`) : NaN;
+}
+
+// Reasons the owner should look before the minutes are given (in Burmese, for Telegram).
+function receiptDoubts(r, order, txn) {
+  const doubts = [];
+  if (r.looks_edited) doubts.push("AI: ပြင်ထားပုံရ" + (r.doubt ? ` (${String(r.doubt).slice(0, 120)})` : ""));
+  if (!txn) doubts.push("Transaction ID မပါ");
+  if (digits(r.receiver_phone).length < 4) doubts.push("လက်ခံသူ နံပါတ် မပါ");
+  if (!/kbz|kpay|wave/i.test(r.wallet || "")) doubts.push("ဘယ် wallet လဲ မသိ");
+  const t = receiptTime(r.time_iso);
+  if (Number.isNaN(t)) doubts.push("လွှဲတဲ့အချိန် မဖတ်နိုင်");
+  else if (t < Date.parse(order.created_at) - 10 * 60_000) doubts.push("Order မတင်ခင်က လွှဲထားတာ");
+  else if (t > Date.now() + 15 * 60_000) doubts.push("လွှဲတဲ့အချိန်က အနာဂတ်");
+  return doubts;
+}
+
 async function screenshot(request, env, url, id) {
   const order = await getOrder(env, id);
   if (!order) return fail(404, "mf_no_order", "No such order");
-  if (order.status === "paid") return json(publicOrder(order, url));
+  // Paid, waiting for the owner, or already decided: another screenshot changes nothing.
+  if (order.status !== "new") return json(publicOrder(order, url));
   if (order.shot_tries >= SHOT_TRIES) return fail(429, "mf_too_many", "Too many screenshots for this order");
   const type = (request.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
   if (!/^image\/(png|jpeg|webp|heic|heif)$/.test(type)) return fail(415, "mf_not_image", "Send a PNG or JPEG screenshot");
@@ -225,20 +263,51 @@ async function screenshot(request, env, url, id) {
     return fail(502, "mf_ai_busy", "Couldn't read the screenshot, try again");
   }
   const txn = cleanTxn(receipt.transaction_id);
+  const wallet = String(receipt.wallet || "").slice(0, 20);
   let problem = receiptProblem(receipt, order);
+  let reused = false;
   if (!problem && txn) {
     const used = await env.DB.prepare("SELECT id FROM orders WHERE txn = ? AND id != ?").bind(txn, id).first();
-    if (used) problem = "ဒီ screenshot (Transaction ID) ကို တခြား order မှာ သုံးပြီးသားပါ။";
+    if (used) {
+      problem = "ဒီ screenshot (Transaction ID) ကို တခြား order မှာ သုံးပြီးသားပါ။";
+      reused = used.id;
+    }
   }
   if (problem) {
-    await env.DB.prepare("UPDATE orders SET reason = ? WHERE id = ? AND status != 'paid'").bind(problem, id).run();
-  } else {
-    await env.DB.prepare("UPDATE orders SET status = 'checking', reason = NULL, txn = ?1, wallet = ?2 WHERE id = ?3 AND status != 'paid'")
-      .bind(txn, String(receipt.wallet || "").slice(0, 20), id).run();
-    await matchOrder(env, await getOrder(env, id));
+    await env.DB.prepare("UPDATE orders SET reason = ? WHERE id = ? AND status = 'new'").bind(problem, id).run();
+    if (reused) {
+      await tell(env, `⚠️ သုံးပြီးသား screenshot ကို ပြန်တင်တယ်\n${orderLine(order)}\nTxn ${txn} ကို order ${reused.slice(0, 6)} မှာ သုံးပြီးသား။ Code မပေးပါ။`,
+                 { photo: image, type });
+    }
+    return json(publicOrder(await getOrder(env, id), url));
+  }
+
+  const doubts = receiptDoubts(receipt, order, txn);
+  if (doubts.length) {
+    const moved = await env.DB.prepare(
+      "UPDATE orders SET status = 'review', reason = ?1, doubts = ?2, txn = ?3, wallet = ?4 WHERE id = ?5 AND status = 'new'",
+    ).bind(SAY_REVIEW, doubts.join("; "), txn, wallet, id).run();
+    if (moved.meta.changes) {
+      await tell(env, `🔎 စစ်ပေးပါ — ${ks(order.amount)} Ks\n${orderLine(order)}\n${wallet || "?"} · Txn ${txn || "—"}\n` +
+                      `သံသယ: ${doubts.join("၊ ")}\n\n${wallet || "Wallet"} history မှာ ${ks(order.amount)} Ks ဝင်လား ကြည့်ပြီး နှိပ်ပါ။`,
+                 { photo: image, type, buttons: [["✅ ငွေရပြီ", "ok:" + id], ["❌ ငြင်းမယ်", "no:" + id]] });
+      await matchOrder(env, await getOrder(env, id));
+    }
+    return json(publicOrder(await getOrder(env, id), url));
+  }
+
+  // A clean receipt: pay now (payment 0 = paid on the screenshot alone), tell the owner.
+  await env.DB.prepare("UPDATE orders SET txn = ?1, wallet = ?2, doubts = NULL WHERE id = ?3 AND status = 'new'").bind(txn, wallet, id).run();
+  if (await complete(env, { ...order, txn, wallet }, oneOff(), "ai")) {
+    const paid = await getOrder(env, id);
+    await tell(env, `✅ ရောင်းရပြီ — ${ks(order.amount)} Ks → ${paid.code}\n${orderLine(order)}\n${wallet} · Txn ${txn}\n\n` +
+                    `${wallet} history မှာ ငွေမဝင်ရင် ↩️ ကို နှိပ်ပါ (ပေးထားတဲ့ မိနစ် ပြန်နုတ်မယ်)။`,
+               { photo: image, type, buttons: [["↩️ ငွေမဝင်ဘူး — ပြန်ရုပ်သိမ်း", "undo:" + id]] });
   }
   return json(publicOrder(await getOrder(env, id), url));
 }
+
+const orderLine = (o) => `${o.minutes} မိနစ်${o.topup ? " ဖြည့် " + o.topup : ""} · order ${o.id.slice(0, 6)} · ${o.name || "?"} · ${o.email || "?"}`;
 
 // ---------------------------------------------------------------- the phone's notifications
 
@@ -286,7 +355,7 @@ async function inbox(request, env, token) {
 const txnAgrees = (order, payment) => !order.txn || !payment.txn || order.txn === payment.txn;
 
 async function matchOrder(env, order) {
-  if (!order || order.status !== "checking") return;
+  if (!order || !WAITING.includes(order.status)) return;
   const { results } = await env.DB.prepare(
     "SELECT * FROM payments WHERE order_id IS NULL AND amount = ?1 AND at > ?2 ORDER BY id",
   ).bind(order.amount, new Date(Date.parse(order.created_at) - 10 * 60_000).toISOString()).all();
@@ -297,16 +366,19 @@ async function matchOrder(env, order) {
 async function matchPayment(env, paymentId) {
   const payment = await env.DB.prepare("SELECT * FROM payments WHERE id = ?").bind(paymentId).first();
   const { results } = await env.DB.prepare(
-    "SELECT * FROM orders WHERE status = 'checking' AND amount = ?1 AND created_at > ?2 AND created_at < ?3 ORDER BY created_at",
+    "SELECT * FROM orders WHERE status IN ('checking', 'review') AND amount = ?1 AND created_at > ?2 AND created_at < ?3 ORDER BY created_at",
   ).bind(payment.amount, new Date(Date.parse(payment.at) - ORDER_DAYS * DAY).toISOString(),
          new Date(Date.parse(payment.at) + 10 * 60_000).toISOString()).all();
   const order = results.find((o) => o.txn && o.txn === payment.txn) || results.find((o) => txnAgrees(o, payment));
   if (order) await complete(env, order, paymentId);
 }
 
+// A unique negative payment number for an order paid without a phone notification.
+const oneOff = () => -(Date.now() * 1000 + Math.floor(Math.random() * 1000));
+
 // Marks the order paid with this payment and gives the minutes, once. `paymentId` is a
-// payments row, or a negative number for an order the owner approved by hand.
-export async function complete(env, order, paymentId) {
+// payments row, or oneOff() when no notification is behind it. `by`: phone | ai | owner.
+export async function complete(env, order, paymentId, by = "phone") {
   if (paymentId > 0) {
     const claim = await env.DB.prepare("UPDATE payments SET order_id = ?1 WHERE id = ?2 AND order_id IS NULL").bind(order.id, paymentId).run();
     if (!claim.meta.changes) return false;
@@ -319,8 +391,8 @@ export async function complete(env, order, paymentId) {
   // The minutes are added only if this call is the one that marked the order paid.
   const won = "EXISTS (SELECT 1 FROM orders WHERE id = ? AND payment_id = ?)";
   const steps = [
-    env.DB.prepare("UPDATE orders SET status = 'paid', code = ?, paid_at = ?, payment_id = ?, reason = NULL WHERE id = ? AND status != 'paid'")
-      .bind(code, now, paymentId, order.id),
+    env.DB.prepare("UPDATE orders SET status = 'paid', code = ?, paid_at = ?, payment_id = ?, paid_by = ?, reason = NULL WHERE id = ? AND status != 'paid'")
+      .bind(code, now, paymentId, by, order.id),
     order.topup
       ? env.DB.prepare(`UPDATE codes SET balance_ms = balance_ms + ?, expires_at = ${LATER_EXPIRY} WHERE code = ? AND ${won}`)
           .bind(ms, expires, expires, code, order.id, paymentId)
@@ -335,6 +407,139 @@ export async function complete(env, order, paymentId) {
     return false;
   }
   return !!update.meta.changes;
+}
+
+// ---------------------------------------------------------------- the owner's decisions
+
+// From Telegram buttons or the admin page. Each returns a short Burmese line for the owner.
+async function decide(env, action, id) {
+  const order = /^[a-z0-9]{16}$/.test(id || "") && await getOrder(env, id);
+  if (!order) return "ဒီ order ကို မတွေ့ပါ";
+  const tag = `order ${id.slice(0, 6)}`;
+  if (action === "ok") {
+    if (order.status === "paid") return `${tag} က ပေးပြီးသားပါ (${order.code})`;
+    await complete(env, order, oneOff(), "owner");
+    const now = await getOrder(env, id);
+    return now.status === "paid" ? `✅ ငွေရပြီ — ${now.code} ပေးလိုက်ပြီ (${tag})` : `${tag} ကို မပေးနိုင်ပါ`;
+  }
+  if (action === "no") {
+    if (order.status === "paid") return `${tag} က ပေးပြီးသားပါ။ ပြန်ရုပ်သိမ်းချင်ရင် ↩️ ကို သုံးပါ`;
+    await env.DB.prepare("UPDATE orders SET status = 'rejected', reason = ? WHERE id = ? AND status != 'paid'").bind(SAY_REJECTED, id).run();
+    return `❌ ငြင်းလိုက်ပြီ — Code မပေးပါ (${tag})`;
+  }
+  if (action === "undo") {
+    if (order.status !== "paid") return `${tag} က ပေးထားတာ မဟုတ်ပါ`;
+    const undo = await env.DB.prepare("UPDATE orders SET status = 'revoked', reason = ? WHERE id = ? AND status = 'paid'").bind(SAY_REVOKED, id).run();
+    if (!undo.meta.changes) return `${tag} ကို ပြန်ရုပ်သိမ်းပြီးသားပါ`;
+    // Take back what's left of these minutes. A code made by this order is also switched off.
+    const ms = order.minutes * 60_000, now = new Date().toISOString();
+    const left = await env.DB.prepare("SELECT balance_ms FROM codes WHERE code = ?").bind(order.code).first();
+    const taken = Math.min(ms, Math.max(0, left ? left.balance_ms : 0));
+    await env.DB.batch([
+      env.DB.prepare("UPDATE codes SET balance_ms = balance_ms - ?1, disabled = CASE WHEN ?2 THEN 1 ELSE disabled END WHERE code = ?3")
+        .bind(taken, order.topup ? 0 : 1, order.code),
+      env.DB.prepare("INSERT INTO ledger (code, at, kind, ms) VALUES (?1, ?2, 'revoke', ?3)").bind(order.code, now, -taken),
+    ]);
+    const used = Math.round((ms - taken) / 60_000);
+    return `↩️ ပြန်ရုပ်သိမ်းပြီး — ${order.code} က ${Math.round(taken / 60_000)} မိနစ် နုတ်လိုက်ပြီ` +
+           (order.topup ? "" : "၊ Code ပိတ်လိုက်ပြီ") + (used ? ` (${used} မိနစ် သုံးပြီးသား)` : "") + ` (${tag})`;
+  }
+  return "?";
+}
+
+// ---------------------------------------------------------------- Telegram (the owner's alerts)
+//
+// Secret TELEGRAM_BOT_TOKEN (from @BotFather). The admin page's "Telegram ချိတ်မယ်" sets the
+// webhook and gives a t.me link; when the owner presses Start, their chat is saved in
+// `settings`, and from then on only that chat's button presses count.
+
+const setting = async (env, key) => (await env.DB.prepare("SELECT value FROM settings WHERE key = ?").bind(key).first())?.value || null;
+const setSetting = (env, key, value) => value == null
+  ? env.DB.prepare("DELETE FROM settings WHERE key = ?").bind(key).run()
+  : env.DB.prepare("INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT (key) DO UPDATE SET value = ?2").bind(key, String(value)).run();
+
+async function hookSecret(env) {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("mf-tg:" + env.TELEGRAM_BOT_TOKEN));
+  return [...new Uint8Array(hash)].slice(0, 24).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function tgCall(env, method, body) {
+  const isForm = body instanceof FormData;
+  const resp = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
+    method: "POST", body: isForm ? body : JSON.stringify(body),
+    headers: isForm ? undefined : { "content-type": "application/json" },
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!data.ok) throw new Error(`Telegram ${method}: ${data.description || resp.status}`);
+  return data.result;
+}
+
+// Tells the owner, with the screenshot and buttons when given. Never fails the caller.
+async function tell(env, text, { photo, type, buttons } = {}) {
+  if (!env.TELEGRAM_BOT_TOKEN) return false;
+  const chat = await setting(env, "tg_chat");
+  if (!chat) return false;
+  const markup = buttons ? { inline_keyboard: [buttons.map(([t, data]) => ({ text: t, callback_data: data }))] } : undefined;
+  try {
+    if (photo && /jpeg|png|webp/.test(type || "")) {
+      const form = new FormData();
+      form.append("chat_id", chat);
+      form.append("photo", new Blob([photo], { type }), "receipt." + (type.split("/")[1] || "jpg"));
+      form.append("caption", text.slice(0, 1024));
+      if (markup) form.append("reply_markup", JSON.stringify(markup));
+      try { await tgCall(env, "sendPhoto", form); return true; } catch (e) { console.error(String(e)); }
+    }
+    await tgCall(env, "sendMessage", { chat_id: chat, text: text.slice(0, 4000), reply_markup: markup });
+    return true;
+  } catch (e) {
+    console.error("telegram:", String(e));
+    return false;
+  }
+}
+
+async function telegramHook(request, env) {
+  if (!env.TELEGRAM_BOT_TOKEN) return fail(404, "mf_not_found", "Not found");
+  if (!(await sameSecret(request.headers.get("x-telegram-bot-api-secret-token") || "", await hookSecret(env)))) {
+    return fail(401, "mf_telegram", "Wrong secret");
+  }
+  const update = await request.json().catch(() => ({}));
+  const quiet = (method, body) => tgCall(env, method, body).catch((e) => console.error(String(e)));
+
+  const msg = update.message;
+  if (msg && msg.chat && msg.chat.type === "private") {
+    const start = String(msg.text || "").match(/^\/start\s+([a-z0-9]{16})$/);
+    const link = await setting(env, "tg_link");
+    if (start && link && start[1] === link) {
+      await setSetting(env, "tg_chat", msg.chat.id);
+      await setSetting(env, "tg_link", null);
+      await quiet("sendMessage", { chat_id: msg.chat.id, text: "✅ ချိတ်ပြီးပါပြီ။ ရောင်းရတိုင်းနဲ့ စစ်ဖို့လိုတဲ့ ငွေလွှဲတိုင်း ဒီမှာ အကြောင်းကြားပါမယ်။" });
+    }
+    return json({ ok: true });
+  }
+
+  const q = update.callback_query;
+  if (q) {
+    const chat = await setting(env, "tg_chat");
+    if (!chat || String(q.from && q.from.id) !== chat) {
+      await quiet("answerCallbackQuery", { callback_query_id: q.id, text: "ခွင့်မရှိပါ" });
+      return json({ ok: true });
+    }
+    const [action, id] = String(q.data || "").split(":");
+    const result = await decide(env, action, id);
+    await quiet("answerCallbackQuery", { callback_query_id: q.id, text: result.slice(0, 190) });
+    const m = q.message;
+    if (m) {
+      const photo = m.caption != null || !!m.photo;
+      const text = ((photo ? m.caption : m.text) || "") + "\n\n" + result;
+      // After undo there's nothing left to press; after ok / no, keep undo for a paid order.
+      const after = (await getOrder(env, id))?.status === "paid" ? [[{ text: "↩️ ငွေမဝင်ဘူး — ပြန်ရုပ်သိမ်း", callback_data: "undo:" + id }]] : [];
+      await quiet(photo ? "editMessageCaption" : "editMessageText", {
+        chat_id: m.chat.id, message_id: m.message_id, [photo ? "caption" : "text"]: text.slice(0, photo ? 1024 : 4000),
+        reply_markup: { inline_keyboard: after },
+      });
+    }
+  }
+  return json({ ok: true });
 }
 
 // ---------------------------------------------------------------- lost codes
@@ -392,7 +597,7 @@ async function trial(request, env) {
 export async function shopAdmin(request, env, url, parts) {
   if (parts.length === 3 && request.method === "GET") {
     const orders = await env.DB.prepare(
-      "SELECT id, minutes, amount, topup, code, status, reason, txn, wallet, name, email, created_at, paid_at, payment_id FROM orders ORDER BY created_at DESC LIMIT 100",
+      "SELECT id, minutes, amount, topup, code, status, reason, doubts, txn, wallet, name, email, created_at, paid_at, payment_id, paid_by FROM orders ORDER BY created_at DESC LIMIT 100",
     ).all();
     const payments = await env.DB.prepare(
       "SELECT id, at, wallet, amount, txn, sender, raw, order_id FROM payments ORDER BY id DESC LIMIT 60",
@@ -400,15 +605,34 @@ export async function shopAdmin(request, env, url, parts) {
     return json({
       orders: orders.results, payments: payments.results,
       phone_url: env.PHONE_TOKEN ? `${url.origin}/mf/pay-inbox/${env.PHONE_TOKEN}` : null,
+      telegram: { bot: !!env.TELEGRAM_BOT_TOKEN, linked: !!(await setting(env, "tg_chat")) },
     });
   }
+  const post = request.method === "POST";
+  if (parts[3] === "telegram" && post) {
+    if (!env.TELEGRAM_BOT_TOKEN) return fail(400, "mf_no_bot", "Put the TELEGRAM_BOT_TOKEN secret first");
+    if (parts[4] === "test") {
+      const sent = await tell(env, "🔔 Myanmar Flow — စမ်းပို့တာပါ။ ဒီစာ ရရင် အဆင်ပြေပါပြီ။");
+      return sent ? json({ ok: true }) : fail(400, "mf_telegram", "Not linked yet, or Telegram refused");
+    }
+    // Point the bot at this server and make a one-time link for the owner to press Start.
+    try {
+      const me = await tgCall(env, "getMe", {});
+      await tgCall(env, "setWebhook", { url: `${url.origin}/mf/tg`, secret_token: await hookSecret(env), allowed_updates: ["message", "callback_query"] });
+      const code = randomId();
+      await setSetting(env, "tg_link", code);
+      return json({ link: `https://t.me/${me.username}?start=${code}`, bot: me.username });
+    } catch (e) {
+      return fail(502, "mf_telegram", String(e.message || e));
+    }
+  }
   const m = (parts[3] || "").match(/^[a-z0-9]{16}$/);
-  if (m && parts[4] === "approve" && request.method === "POST") {
+  const action = { approve: "ok", reject: "no", undo: "undo" }[parts[4]];
+  if (m && action && post) {
+    if (!(await getOrder(env, parts[3]))) return fail(404, "mf_no_order", "No such order");
+    const said = await decide(env, action, parts[3]);
     const order = await getOrder(env, parts[3]);
-    if (!order) return fail(404, "mf_no_order", "No such order");
-    if (order.status === "paid") return json({ ok: true, code: order.code });
-    const ok = await complete(env, order, -Date.now());
-    return json({ ok, code: (await getOrder(env, order.id)).code });
+    return json({ ok: true, said, status: order.status, code: order.code });
   }
   return fail(404, "mf_not_found", "Not found");
 }
