@@ -146,6 +146,17 @@
   .trial span { color: var(--muted); font-size: 14px; }
   .trial .btn { flex: none; }
   @media (max-width: 640px) { .trial { flex-wrap: wrap; } .trial div { min-width: 0; flex-basis: calc(100% - 62px); } .trial .btn { width: 100%; justify-content: center; } }
+  .pay { margin-top: 20px; border-top: 1px dashed var(--line); padding-top: 18px; }
+  .pay-title { font-weight: 700; margin: 0 0 10px; }
+  .pay-title span { color: var(--accent); }
+  .pay-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+  .pay .wallets { font-size: 14.5px; }
+  .pay-no { font: 700 19px "Inter", sans-serif; letter-spacing: .02em; color: var(--text); background: var(--tint); border: 1px solid var(--line);
+            border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+  .pay-no:hover { border-color: var(--accent); }
+  .pay-no small { font: 600 12px "Noto Sans Myanmar", sans-serif; color: var(--accent); margin-left: 6px; }
+  .pay ol { margin: 12px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+  .pay ol li { margin: 3px 0; }
   .hero .trial-link { display: inline-block; margin-top: 18px; color: var(--accent-2); font-weight: 700; font-size: 15px; text-decoration: none;
                       border-bottom: 1px dashed rgba(94,200,255,.6); }
   .hero .trial-link:hover { color: #fff; }
@@ -623,6 +634,18 @@
         <a class="btn tg" id="toTelegram" href="https://t.me/thecrashO" target="_blank" rel="noopener">Telegram နဲ့ ပို့မယ်</a>
       </div>
       <p id="copied"></p>
+      <div class="pay" id="pay">
+        <p class="pay-title">ငွေပေးချေရန် <span id="payTotal"></span></p>
+        <div class="pay-row">
+          <span class="wallets"><b>KBZPay</b> · <b>WavePay</b></span>
+          <button type="button" class="pay-no" id="copyNo" aria-label="ဖုန်းနံပါတ် ကူးမယ်">09 424 469 168 <small id="copyNoTip">ကူးမယ်</small></button>
+        </div>
+        <ol>
+          <li>အပေါ်က ခလုတ်နဲ့ Telegram ပို့ပါ</li>
+          <li>ဒီနံပါတ်ကို KBZPay ဒါမှမဟုတ် WavePay နဲ့ လွှဲပါ။ လွှဲတဲ့အခါ <b>Note</b> မှာ <b>Myanmar Flow</b> လို့ ရေးပေးပါ</li>
+          <li>ငွေလွှဲ screenshot ကို Telegram မှာ ပို့ပါ — Code ကို ချက်ချင်း ပို့ပေးပါမယ်</li>
+        </ol>
+      </div>
     </form>
   </div>
 </section>
@@ -661,6 +684,9 @@
     $("minsRow").style.opacity = asking() || trial() ? ".45" : "";
     $("codeLabel").style.opacity = $("code").style.opacity = trial() ? ".45" : "";
     $("total").textContent = mins > 0 ? ks(mins) : "—";
+    // Nothing to pay for a free trial or a question.
+    $("pay").hidden = asking() || trial();
+    $("payTotal").textContent = mins > 0 ? "· " + ks(mins) : "";
     var text = message();
     $("preview").textContent = text;
     $("toTelegram").href = "https://t.me/thecrashO?text=" + encodeURIComponent(text);
@@ -684,6 +710,9 @@
   });
   document.querySelectorAll("[data-trial]").forEach(function (a) {
     a.addEventListener("click", function () { $("mtrial").checked = true; update(); });
+  });
+  $("copyNo").addEventListener("click", function () {
+    try { navigator.clipboard.writeText("09424469168").then(function () { $("copyNoTip").textContent = "ကူးပြီး ✓"; }); } catch (e) {}
   });
   // Telegram fills the text in from the link on most apps; copy it too in case one doesn't.
   $("toTelegram").addEventListener("click", function () {
