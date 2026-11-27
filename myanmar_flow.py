@@ -41,7 +41,7 @@ else:
     import platform_win as plat
 
 APP_NAME = "Myanmar Flow"
-APP_VERSION = "1.3.7"
+APP_VERSION = "1.3.8"
 REPO_URL = "https://github.com/ThecrashO/myanmar-flow"
 DATA_DIR = (Path.home() / "Library" / "Application Support" / "MyanmarFlow" if IS_MAC
             else Path(os.environ.get("APPDATA", Path.home())) / "MyanmarFlow")
