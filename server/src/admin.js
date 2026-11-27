@@ -44,7 +44,7 @@ export const adminPage = `<!doctype html>
   <div class="card">
     <div class="row">
       <input id="note" placeholder="ဘယ်သူ့အတွက်လဲ (ဥပမာ Ko Aung)" style="flex:2">
-      <input id="minutes" type="number" min="0" step="1" value="110" style="width:110px" aria-label="Minutes">
+      <input id="minutes" type="number" min="0" step="1" value="60" style="width:110px" aria-label="Minutes">
       <span class="muted">မိနစ်</span>
       <button id="create" class="primary">Code အသစ် ထုတ်မယ်</button>
     </div>
@@ -94,7 +94,7 @@ async function load() {
     const actions = r.insertCell();
     button(actions, "Copy", () => navigator.clipboard.writeText(c.code).then(() => say(c.code + " ကူးပြီးပါပြီ")));
     button(actions, "+ မိနစ်", async () => {
-      const m = Number(prompt(c.code + " ကို ဘယ်နှစ်မိနစ် ထည့်မလဲ", "110"));
+      const m = Number(prompt(c.code + " ကို ဘယ်နှစ်မိနစ် ထည့်မလဲ", "60"));
       if (!m) return;
       try { await api("/codes/" + c.code + "/topup", { method: "POST", body: JSON.stringify({ minutes: m }) }); say(c.code + " ကို " + m + " မိနစ် ထည့်ပြီးပါပြီ"); load(); }
       catch (e) { say(e.message, true); }

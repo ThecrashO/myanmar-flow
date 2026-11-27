@@ -63,13 +63,15 @@ Open `https://<your address>/admin` and enter the admin token. From there you ca
 - **ဖျက်**: delete a code for good, with its minutes and history. It asks first and can't be
   undone; the app then tells that user the code is wrong. Use **ပိတ်** if you might want it back.
 
-Suggested packs (cost is about 45 Ks a minute at $1 = 5,000 Ks):
+Price: a flat **99 Ks a minute**, any amount (Gemini costs about 45 Ks a minute at $1 = 5,000 Ks).
+The buyer types the minutes they want in the page's order form, which works out the total. Make the
+code with exactly that many minutes. Examples:
 
-| Pack | Price | Minutes to give |
-|---|---|---|
-| 30 min | 4,500 Ks | 30 |
-| 100 min | 13,500 Ks | 110 (+10%) |
-| 300 min | 40,000 Ks | 360 (+20%) |
+| Minutes | Price |
+|---|---|
+| 30 | 2,970 Ks |
+| 60 | 5,940 Ks |
+| 180 | 17,820 Ks |
 
 ## Local testing
 

@@ -118,7 +118,26 @@
   .price .ks { font: 700 22px "Inter", "Noto Sans Myanmar", sans-serif; color: var(--accent); margin-top: 8px; }
   .price .per { color: var(--muted); font-size: 14px; }
   .price.best { border: 2px solid var(--accent); }
-  .price .top { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); }
+  .price .top { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+  .card.price .mins { color: var(--text); }
+  .badge.plain { text-transform: none; letter-spacing: 0; font-size: 12px; }
+  .packs { margin-left: auto; margin-right: auto; }
+  .btn.wide { width: 100%; justify-content: center; }
+  .perks-row { list-style: none; padding: 0; margin: 26px auto 0; max-width: 820px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; }
+  .perks-row li { position: relative; padding-left: 26px; font-size: 15px; }
+  .perks-row li::before { content: ""; position: absolute; left: 0; top: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--ok); }
+  .perks-row li::after { content: ""; position: absolute; left: 5px; top: 9px; width: 8px; height: 5px; border-left: 2.4px solid #fff; border-bottom: 2.4px solid #fff; transform: rotate(-45deg); }
+  .price .btn.wide { margin-top: 18px; }
+  .packs { max-width: 980px; }
+  .mins-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+  .form .mins-row input { width: 110px; flex: none; }
+  .mins-row b { color: var(--accent); font-size: 17px; }
+  .gets-title { text-align: center; font-weight: 700; margin: 40px 0 0; }
+  .gets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 820px; margin: 16px auto 0; }
+  .gets div { background: var(--tint); border: 1px solid var(--line); border-radius: 14px; padding: 18px 16px; text-align: center; }
+  .gets b { display: block; font: 800 28px "Inter", "Noto Sans Myanmar", sans-serif; color: var(--accent); }
+  .gets span { color: var(--muted); font-size: 14px; }
+  @media (max-width: 640px) { .gets { grid-template-columns: 1fr; } .gets div { display: flex; align-items: center; gap: 14px; text-align: left; } .gets b { min-width: 104px; font-size: 24px; } }
   .fine { color: var(--muted); font-size: 14px; text-align: center; margin-top: 24px; }
 
   /* steps */
@@ -224,6 +243,13 @@
     .btns .btn { width: 100%; justify-content: center; }
     .shot { margin-top: 40px; border-radius: 14px 14px 0 0; }
     .price .mins { font-size: 38px; }
+    /* Give text the full phone width: number above the step, slimmer boxes. */
+    .card, .form { padding: 20px 16px; }
+    .steps > li { grid-template-columns: 1fr; gap: 10px; padding: 16px 14px; }
+    .steps > li::before { width: 34px; height: 34px; border-radius: 10px; font-size: 15px; }
+    .macfix { margin-left: -4px; margin-right: -4px; padding: 12px 12px 12px 14px; }
+    .macfix ol { padding-left: 18px; }
+    .safe { padding: 10px; }
   }
   @media (max-width: 360px) { .brand span { display: none; } }
 
@@ -415,30 +441,43 @@
 <section id="pricing">
   <div class="wrap">
     <p class="eyebrow">Code ဈေးနှုန်း</p>
-    <h2>များများဝယ်ရင် <em>ပိုတန်</em>တယ်</h2>
-    <p class="lead">တစ်နေ့ ၅ မိနစ်လောက် ပြောရင် စာလုံး ၆၀၀ ကျော် ရိုက်ပြီးသားဖြစ်ပါတယ်။ မိနစ်ကုန်ရင် Code အဟောင်းကိုပဲ ငွေဖြည့်ပါ။</p>
-    <div class="grid3">
+    <h2>တစ်မိနစ် <em>99 ကျပ်</em> ပဲ</h2>
+    <p class="lead">ဈေးတစ်မျိုးတည်း၊ တန်းတန်းပဲ — လိုသလောက် မိနစ် ဝယ်ပါ။ ပြောနေတဲ့ စက္ကန့်ကိုပဲ တွက်တာမို့ (တစ်စက္ကန့် ၂ ကျပ်တောင် မပြည့်) app ဖွင့်ထားရုံ၊ စဉ်းစားနေရုံနဲ့ မကုန်ပါဘူး။</p>
+
+    <p class="gets-title">99 ကျပ် (၁ မိနစ်) နဲ့ ဘာရမလဲ</p>
+    <div class="gets">
+      <div><b>~၆ ခု</b><span>Message / comment / စာပြန် — တစ်ခုကို ၁၇ ကျပ်ပဲ</span></div>
+      <div><b>~၆ မိနစ်</b><span>ကိုယ်တိုင် ထိုင်ရိုက်ရမယ့် အချိန် သက်သာ</span></div>
+      <div><b>~၁၂၀</b><span>မြန်မာ စကားလုံး ရိုက်ပြီးသား</span></div>
+    </div>
+
+    <p class="gets-title">ဥပမာ</p>
+    <div class="grid3 packs">
       <div class="card price">
-        <span class="badge">စမ်းသုံး</span>
         <p class="mins">30 <small>မိနစ်</small></p>
-        <p class="ks">4,500 Ks</p>
-        <p class="per">မိနစ်ကို 150 Ks</p>
+        <p class="ks">2,970 Ks</p>
+        <p class="per">Message ~၁၈၀ · စမ်းသုံးဖို့</p>
+        <a class="btn line wide" href="#contact" data-min="30">ဒါယူမယ်</a>
       </div>
       <div class="card price best">
-        <span class="badge dark top">အကြံပြု</span>
-        <span class="badge">+10% ပို</span>
-        <p class="mins">110 <small>မိနစ်</small></p>
-        <p class="ks">13,500 Ks</p>
-        <p class="per">မိနစ်ကို 123 Ks</p>
+        <span class="badge dark top plain">အကြံပြု</span>
+        <p class="mins">1 <small>နာရီ</small></p>
+        <p class="ks">5,940 Ks</p>
+        <p class="per">Message ~၃၆၀ · တစ်ရက် ၂၀ ဆိုရင် ၁၈ ရက်</p>
+        <a class="btn solid wide" href="#contact" data-min="60">ဒါယူမယ်</a>
       </div>
       <div class="card price">
-        <span class="badge">+20% ပို · အတန်ဆုံး</span>
-        <p class="mins">360 <small>မိနစ်</small></p>
-        <p class="ks">40,000 Ks</p>
-        <p class="per">မိနစ်ကို 111 Ks</p>
+        <p class="mins">3 <small>နာရီ</small></p>
+        <p class="ks">17,820 Ks</p>
+        <p class="per">Message ~၁,၀၈၀ · ဆိုင် page၊ customer စာပြန် များသူတွေ</p>
+        <a class="btn line wide" href="#contact" data-min="180">ဒါယူမယ်</a>
       </div>
     </div>
-    <p class="fine">AI စာပြင် (ဒါမှမဟုတ် English ဘာသာပြန်) တစ်ကြိမ်ကို ၅ စက္ကန့် တွက်ပါတယ်။</p>
+    <ul class="perks-row">
+      <li>VPN မလို</li><li>Key ယူစရာ မလို</li><li>Desktop + Laptop နှစ်လုံး သုံးလို့ရ</li><li>မိနစ် သက်တမ်း မကုန်</li><li>ကုန်ရင် Code အဟောင်းကိုပဲ ဖြည့်</li>
+    </ul>
+    <p class="fine">ခန့်မှန်းချက်တွေက message တစ်ခုကို ၁၀ စက္ကန့် ပြောတယ်၊ အဲဒီစာကို ကိုယ်တိုင်ရိုက်ရင် ၁ မိနစ်လောက် ကြာတယ်လို့ တွက်ထားတာပါ။
+      AI စာပြင် (ဒါမှမဟုတ် English ဘာသာပြန်) ဖွင့်ထားရင် တစ်ကြိမ်ကို ၅ စက္ကန့် ထပ်တွက်လို့ message အရေအတွက် ၃ ပုံ ၂ ပုံလောက် ဖြစ်ပါမယ်။</p>
   </div>
 </section>
 
@@ -539,12 +578,16 @@
     <form class="form" id="order" onsubmit="return false">
       <label for="name">နာမည်</label>
       <input id="name" autocomplete="name" placeholder="ဥပမာ Ko Aung">
-      <label id="packLabel">ဘယ် pack ယူမလဲ</label>
+      <label id="packLabel" for="minutes">ဘယ်နှစ်မိနစ် ယူမလဲ <span style="font-weight:400;color:var(--muted)">(တစ်မိနစ် 99 Ks)</span></label>
       <div class="choices" role="radiogroup" aria-labelledby="packLabel">
-        <input type="radio" name="pack" id="p30" value="30 မိနစ် (4,500 Ks)"><label for="p30">30 မိနစ် · 4,500</label>
-        <input type="radio" name="pack" id="p110" value="110 မိနစ် (13,500 Ks)" checked><label for="p110">110 မိနစ် · 13,500</label>
-        <input type="radio" name="pack" id="p360" value="360 မိနစ် (40,000 Ks)"><label for="p360">360 မိနစ် · 40,000</label>
+        <input type="radio" name="pack" id="m30" value="30"><label for="m30">30 မိနစ်</label>
+        <input type="radio" name="pack" id="m60" value="60" checked><label for="m60">1 နာရီ</label>
+        <input type="radio" name="pack" id="m180" value="180"><label for="m180">3 နာရီ</label>
         <input type="radio" name="pack" id="pq" value=""><label for="pq">မေးချင်တာပဲ ရှိတယ်</label>
+      </div>
+      <div class="mins-row" id="minsRow">
+        <input id="minutes" type="number" min="1" max="100000" step="1" inputmode="numeric" value="60" aria-label="မိနစ်">
+        <span>မိနစ် = <b id="total">5,940 Ks</b></span>
       </div>
       <label id="osLabel">ဘယ်စက်မှာ သုံးမလဲ</label>
       <div class="choices" role="radiogroup" aria-labelledby="osLabel">
@@ -574,9 +617,14 @@
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
+  var PRICE = 99;  // Ks a minute
+  function ks(mins) { return (mins * PRICE).toLocaleString("en-US") + " Ks"; }
+  function asking() { return $("pq").checked; }
   function picked(name) { var el = document.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ""; }
   function message() {
-    var name = $("name").value.trim(), pack = picked("pack"), os = picked("os");
+    var name = $("name").value.trim(), os = picked("os");
+    var mins = asking() ? 0 : Math.round(Number($("minutes").value) || 0);
+    var pack = mins > 0 ? mins + " မိနစ် (" + ks(mins) + ")" : "";
     var code = $("code").value.trim().toUpperCase();
     var lines = ["မင်္ဂလာပါ" + (name ? "၊ " + name + " ပါ" : "") + "။"];
     if (pack && code) lines.push("Myanmar Flow Code " + code + " ကို " + pack + " ငွေဖြည့်ချင်ပါတယ်။");
@@ -586,12 +634,29 @@
     return lines.join("\n");
   }
   function update() {
+    var mins = Math.round(Number($("minutes").value) || 0);
+    $("minsRow").style.opacity = asking() ? ".45" : "";
+    $("total").textContent = mins > 0 ? ks(mins) : "—";
     var text = message();
     $("preview").textContent = text;
     $("toTelegram").href = "https://t.me/thecrashO?text=" + encodeURIComponent(text);
   }
   document.getElementById("order").addEventListener("input", update);
   document.getElementById("order").addEventListener("change", update);
+  // A minutes chip or a price card's button fills in the minutes; typing a number picks the matching chip, if any.
+  function setMinutes(m) {
+    $("minutes").value = m;
+    ["m30", "m60", "m180"].forEach(function (id) { $(id).checked = $(id).value === String(m); });
+    update();
+  }
+  ["m30", "m60", "m180"].forEach(function (id) { $(id).addEventListener("change", function () { setMinutes($(id).value); }); });
+  $("minutes").addEventListener("input", function () {
+    var m = $("minutes").value;
+    ["m30", "m60", "m180"].forEach(function (id) { $(id).checked = $(id).value === m; });
+  });
+  document.querySelectorAll("[data-min]").forEach(function (a) {
+    a.addEventListener("click", function () { setMinutes(a.getAttribute("data-min")); });
+  });
   // Telegram fills the text in from the link on most apps; copy it too in case one doesn't.
   $("toTelegram").addEventListener("click", function () {
     var text = message();
