@@ -176,7 +176,7 @@ r = pay_through(a, receipt(5100, txn_a))
 check("a good screenshot gives a code", r["status"] == "paid" and r["code"], r)
 code = r["code"]
 check("the new code has 60 minutes", seconds(code) == 3600, seconds(code))
-check("a 60-minute code lasts 90 days", days_left(code) == 90, days_left(code))
+check("a 60-minute code lasts 30 days", days_left(code) == 30, days_left(code))
 check("a paid order ignores more screenshots", shot(a, receipt(5100, tx(9)))["code"] == code)
 
 # The same transaction ID can't pay a second order.
@@ -216,7 +216,7 @@ t = order(30, code=keep)
 check("top-up order costs 2,970", t["amount"] in (2970, 2971) and t["topup"] == keep, t)
 r = pay_through(t, receipt(t["amount"], tx(5)))
 check("a top-up adds to the same code", r["status"] == "paid" and r["code"] == keep and seconds(keep) == 5400, (r, seconds(keep)))
-check("a smaller top-up doesn't shorten the 90 days", days_left(keep) == 90, days_left(keep))
+check("a smaller top-up doesn't shorten the 30 days", days_left(keep) == 30, days_left(keep))
 r = requests.post(f"{BASE}/admin/api/shop/{t['id']}/undo", headers=ADMIN, json={}).json()
 check("admin undo of a top-up takes back 30 minutes only", r["status"] == "revoked" and seconds(keep) == 3600 and not admin_code(keep)["disabled"], (r, seconds(keep)))
 
@@ -235,7 +235,7 @@ rec = lambda email, txn: requests.post(f"{BASE}/mf/recover", json={"email": emai
 big = order(180)
 txn_big = tx(7)
 r = pay_through(big, receipt(big["amount"], txn_big))
-check("a 3-hour code lasts a year", days_left(r["code"]) == 365, days_left(r["code"]))
+check("a 3-hour code lasts 90 days", days_left(r["code"]) == 90, days_left(r["code"]))
 r2 = rec(EMAIL.upper(), txn_big.lower())
 check("email + transaction ID gets the codes back", r2.status_code == 200 and r["code"] in [c["code"] for c in r2.json()["codes"]], r2.text)
 check("the right email with a wrong transaction ID gets nothing", rec(EMAIL, "99999999").status_code == 404)

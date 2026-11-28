@@ -157,7 +157,7 @@
   var cost = function (m) { return m * rate(m); };
   var ks = function (n) { return Number(n).toLocaleString("en-US") + " Ks"; };
   // Bigger packs last longer; the server uses the same rule.
-  var days = function (m) { return m >= 180 ? "၁ နှစ်" : m >= 60 ? "၉၀ ရက်" : "၃၀ ရက်"; };
+  var days = function (m) { return m >= 180 ? "၃ လ" : m >= 60 ? "၁ လ" : "၁၅ ရက်"; };
   var date = function (iso) { var d = new Date(iso); return d.getDate() + "/" + (d.getMonth() + 1) + "/" + d.getFullYear(); };
   var params = new URLSearchParams(location.search);
   function save(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} }

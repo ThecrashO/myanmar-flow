@@ -44,7 +44,7 @@ export const minutesFor = (paid) => Math.max(0, ...TIERS.map(([from, r]) => {
   return m >= from ? m : 0;
 }));
 export function validDays(minutes) {
-  return minutes >= 180 ? 365 : minutes >= 60 ? 90 : 30;
+  return minutes >= 180 ? 90 : minutes >= 60 ? 30 : 15;
 }
 export const daysFromNow = (days) => new Date(Date.now() + days * 86_400_000).toISOString();
 
