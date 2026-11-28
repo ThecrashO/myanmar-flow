@@ -41,7 +41,7 @@ else:
     import platform_win as plat
 
 APP_NAME = "Crash Flow"
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.4.1"
 REPO_URL = "https://github.com/ThecrashO/crash-flow"
 
 
