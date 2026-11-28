@@ -1,6 +1,6 @@
-# 📘 Myanmar Flow — အသုံးပြုနည်း လမ်းညွှန် အပြည့်အစုံ
+# 📘 Crash Flow — အသုံးပြုနည်း လမ်းညွှန် အပြည့်အစုံ
 
-ဒီလမ်းညွှန်ကို အစကနေ အဆုံးထိ တစ်ခါဖတ်ပြီးရင် Myanmar Flow ကို ကောင်းကောင်း သုံးတတ်သွားပါလိမ့်မယ်။
+ဒီလမ်းညွှန်ကို အစကနေ အဆုံးထိ တစ်ခါဖတ်ပြီးရင် Crash Flow ကို ကောင်းကောင်း သုံးတတ်သွားပါလိမ့်မယ်။
 ကွန်ပျူတာ သိပ်မကျွမ်းကျင်သူတွေလည်း လိုက်လုပ်လို့ရအောင် အဆင့်တိုင်းကို ရှင်းရှင်းလင်းလင်း ရေးထားပါတယ်။
 
 ---
@@ -8,7 +8,7 @@
 ## 📑 မာတိကာ
 
 **အပိုင်း ၁ — စတင်အသုံးပြုခြင်း**
-1. [Myanmar Flow ဆိုတာ ဘာလဲ](#s1)
+1. [Crash Flow ဆိုတာ ဘာလဲ](#s1)
 2. [မစခင် လိုအပ်တာတွေ](#s2)
 3. [Download နဲ့ Install လုပ်နည်း](#s3)
 4. [Setup wizard (API key ထည့်ခြင်း)](#s4)
@@ -54,28 +54,28 @@ Mac version က Windows version နဲ့ အတူတူပါပဲ။ မတ�
 
 | About This Mac မှာ ပေါ်တာ | Download လုပ်ရမယ့် file |
 |---|---|
-| **Chip**: Apple M1, M2, M3, M4 ... | **`MyanmarFlow-mac.zip`** |
-| **Processor**: Intel Core ... | **`MyanmarFlow-mac-intel.zip`** |
+| **Chip**: Apple M1, M2, M3, M4 ... | **`CrashFlow-mac.zip`** |
+| **Processor**: Intel Core ... | **`CrashFlow-mac-intel.zip`** |
 
 macOS **14 (Sonoma) ဒါမှမဟုတ် အသစ်** လိုပါတယ်။ (Apple menu → About This Mac → **macOS** မှာ ကြည့်ပါ)
 
 ### Install လုပ်နည်း
 
-1. [Release စာမျက်နှာ](https://github.com/ThecrashO/myanmar-flow/releases/latest) ကနေ ကိုယ့် Mac နဲ့ ကိုက်တဲ့ zip (**`MyanmarFlow-mac.zip`** ဒါမှမဟုတ် Intel Mac ဆိုရင် **`MyanmarFlow-mac-intel.zip`**) ကို download လုပ်ပါ
-2. Zip ကို နှစ်ချက်နှိပ်ဖွင့်ပါ → ထွက်လာတဲ့ **MyanmarFlow** ကို **Applications** folder ထဲ ဆွဲထည့်ပါ
-3. ပထမဆုံးအကြိမ် ဖွင့်တဲ့အခါ **"MyanmarFlow" Not Opened / Apple could not verify...** ပေါ်ပါမယ်
+1. [Release စာမျက်နှာ](https://github.com/ThecrashO/crash-flow/releases/latest) ကနေ ကိုယ့် Mac နဲ့ ကိုက်တဲ့ zip (**`CrashFlow-mac.zip`** ဒါမှမဟုတ် Intel Mac ဆိုရင် **`CrashFlow-mac-intel.zip`**) ကို download လုပ်ပါ
+2. Zip ကို နှစ်ချက်နှိပ်ဖွင့်ပါ → ထွက်လာတဲ့ **CrashFlow** ကို **Applications** folder ထဲ ဆွဲထည့်ပါ
+3. ပထမဆုံးအကြိမ် ဖွင့်တဲ့အခါ **"CrashFlow" Not Opened / Apple could not verify...** ပေါ်ပါမယ်
    - **Move to Trash** မနှိပ်ပါနဲ့၊ **Done** ကို နှိပ်ပါ
    - ဘယ်ဘက်အပေါ်ထောင့်က Apple မီနူး → **System Settings → Privacy & Security** ကိုသွားပြီး အောက်ဆုံးနားက **Open Anyway** ကိုနှိပ်ပါ
    - Mac password (ဒါမှမဟုတ် Touch ID) ထည့်ပြီး **Open** ကို နှိပ်ပါ။ တစ်ခါပဲ လုပ်ရပါတယ်
    - (Apple ကို ပိုက်ဆံပေးပြီး လက်မှတ် မထိုးထားလို့ ပေါ်တာပါ။ app က ဘေးကင်းပါတယ်)
-   - **Open Anyway** မပေါ်ရင် Terminal မှာ `xattr -dr com.apple.quarantine /Applications/MyanmarFlow.app` ကို run ပြီး app ကို ပြန်ဖွင့်ပါ
+   - **Open Anyway** မပေါ်ရင် Terminal မှာ `xattr -dr com.apple.quarantine /Applications/CrashFlow.app` ကို run ပြီး app ကို ပြန်ဖွင့်ပါ
 
 ### ခွင့်ပြုချက် ၂ ခု ပေးရပါမယ်
 
 | ခွင့်ပြုချက် | ဘာလို့လဲ | ဘယ်မှာ ပေးရလဲ |
 |---|---|---|
 | 🎙️ **Microphone** | အသံဖမ်းဖို့ | ပထမဆုံး ပြောတဲ့အခါ box ပေါ်လာရင် **Allow** |
-| ⌨️ **Accessibility** | Key ဖိတာ သိဖို့နဲ့ စာ Paste လုပ်ဖို့ | **System Settings → Privacy & Security → Accessibility** မှာ **MyanmarFlow** ကို ဖွင့်ပါ |
+| ⌨️ **Accessibility** | Key ဖိတာ သိဖို့နဲ့ စာ Paste လုပ်ဖို့ | **System Settings → Privacy & Security → Accessibility** မှာ **CrashFlow** ကို ဖွင့်ပါ |
 
 Accessibility ဖွင့်ပြီးရင် app ကို **ပိတ်ပြီး ပြန်ဖွင့်**ပါ (menu bar icon → Quit)။ မဟုတ်ရင် key ဖိလို့ ဘာမှ မဖြစ်တာမျိုး ရှိနိုင်ပါတယ်။
 
@@ -97,8 +97,8 @@ Mac keyboard မှာ ညာဘက် Ctrl မရှိလို့ ဒီ key 
 
 - 🟢 Icon က screen **အပေါ်ညာဘက် menu bar** မှာ ပေါ်ပါတယ် (Windows မှာ နာရီဘေး)။ နှိပ်ရင် menu ပွင့်ပါတယ်။
 - Dock မှာ icon မပေါ်ပါ (နောက်ကွယ်မှာ အလုပ်လုပ်နေတာပါ)။
-- Settings တွေ သိမ်းတဲ့နေရာ: `~/Library/Application Support/MyanmarFlow/`
-- ဖျက်ချင်ရင်: Applications ထဲက MyanmarFlow ကို Trash ထဲ ဆွဲထည့်ပါ။ Mac စဖွင့်ရင် အလိုလိုဖွင့်တာ ပိတ်ချင်ရင် Settings မှာ အရင် ပိတ်ပါ။
+- Settings တွေ သိမ်းတဲ့နေရာ: `~/Library/Application Support/CrashFlow/`
+- ဖျက်ချင်ရင်: Applications ထဲက CrashFlow ကို Trash ထဲ ဆွဲထည့်ပါ။ Mac စဖွင့်ရင် အလိုလိုဖွင့်တာ ပိတ်ချင်ရင် Settings မှာ အရင် ပိတ်ပါ။
 
 ---
 
@@ -106,9 +106,9 @@ Mac keyboard မှာ ညာဘက် Ctrl မရှိလို့ ဒီ key 
 
 <a name="s1"></a>
 
-## 1. Myanmar Flow ဆိုတာ ဘာလဲ
+## 1. Crash Flow ဆိုတာ ဘာလဲ
 
-Myanmar Flow က **မြန်မာလို ပြောလိုက်တာကို စာအဖြစ် ချက်ချင်း ရိုက်ပေးတဲ့** Windows နဲ့ Mac program လေးပါ။
+Crash Flow က **မြန်မာလို ပြောလိုက်တာကို စာအဖြစ် ချက်ချင်း ရိုက်ပေးတဲ့** Windows နဲ့ Mac program လေးပါ။
 
 - **ဘယ် app မှာမဆို** သုံးလို့ရပါတယ် — Facebook, Messenger, Viber, Gmail, Word, Excel, Notepad, Chrome ... cursor (စာရိုက်တဲ့ မျဉ်းတောင်လေး) ရှိတဲ့ နေရာတိုင်းမှာ။
 - Key တစ်ခုကို **ဖိထား → ပြော → လွှတ်** ရုံပါပဲ။ Keyboard နဲ့ မြန်မာစာ ရိုက်စရာ မလိုတော့ပါဘူး။
@@ -135,9 +135,9 @@ Google က Gemini API ကို [သုံးခွင့်ပြုထား�
 ဒါကြောင့် မြန်မာပြည်ထဲကနေ သုံးရင် "ဒီနေရာကနေ Gemini သုံးခွင့်မရှိပါ" ဆိုတဲ့ error ပေါ်နိုင်ပါတယ်။
 ပြည်ပ (ထိုင်း၊ စင်္ကာပူ၊ မလေးရှား၊ ဂျပန် ...) မှာ နေတဲ့သူတွေကတော့ ပြဿနာ မရှိပါဘူး။
 
-🔐 **မြန်မာပြည်ထဲကနေ ကိုယ်ပိုင် key နဲ့ သုံးမယ်ဆိုရင် VPN ဖွင့်ထားရပါမယ်** — key ယူတဲ့အချိန် (aistudio.google.com) ရော၊ Myanmar Flow နဲ့ ပြောနေတဲ့အချိန်ပါ။ VPN ပိတ်လိုက်ရင် "ဒီနေရာကနေ Gemini သုံးခွင့်မရှိပါ" ပေါ်ပါမယ်။
+🔐 **မြန်မာပြည်ထဲကနေ ကိုယ်ပိုင် key နဲ့ သုံးမယ်ဆိုရင် VPN ဖွင့်ထားရပါမယ်** — key ယူတဲ့အချိန် (aistudio.google.com) ရော၊ Crash Flow နဲ့ ပြောနေတဲ့အချိန်ပါ။ VPN ပိတ်လိုက်ရင် "ဒီနေရာကနေ Gemini သုံးခွင့်မရှိပါ" ပေါ်ပါမယ်။
 
-🎫 **VPN မသုံးချင်ရင် [Myanmar Flow Code](#code) နဲ့ သုံးပါ။** Code နဲ့ဆိုရင် Myanmar Flow server ကနေ Google ကို ဆက်ပေးလို့ VPN မလိုပါ။
+🎫 **VPN မသုံးချင်ရင် [Crash Flow Code](#code) နဲ့ သုံးပါ။** Code နဲ့ဆိုရင် Crash Flow server ကနေ Google ကို ဆက်ပေးလို့ VPN မလိုပါ။
 
 ---
 
@@ -147,31 +147,31 @@ Google က Gemini API ကို [သုံးခွင့်ပြုထား�
 
 ### အဆင့် 3.1 — Download လုပ်ပါ
 
-1. ဒီ link ကိုဖွင့်ပါ 👉 **https://github.com/ThecrashO/myanmar-flow/releases/latest**
+1. ဒီ link ကိုဖွင့်ပါ 👉 **https://github.com/ThecrashO/crash-flow/releases/latest**
 2. စာမျက်နှာ အောက်နားက **Assets** ဆိုတဲ့ အပိုင်းမှာ ဖိုင် ၂ ခု တွေ့ပါမယ်:
 
 | ဖိုင် | ဘယ်ဟာ ယူရမလဲ |
 |---|---|
-| **`MyanmarFlow-Setup.exe`** | ✅ **ဒါကို ယူပါ** (အများစုအတွက်) |
-| `MyanmarFlow.exe` | Install မလုပ်ဘဲ USB ထဲကနေ တိုက်ရိုက် run ချင်သူတွေအတွက် |
+| **`CrashFlow-Setup.exe`** | ✅ **ဒါကို ယူပါ** (အများစုအတွက်) |
+| `CrashFlow.exe` | Install မလုပ်ဘဲ USB ထဲကနေ တိုက်ရိုက် run ချင်သူတွေအတွက် |
 
-3. `MyanmarFlow-Setup.exe` ကို နှိပ်ပြီး download လုပ်ပါ။
+3. `CrashFlow-Setup.exe` ကို နှိပ်ပြီး download လုပ်ပါ။
    Browser က "ဒီဖိုင်က အန္တရာယ်ရှိနိုင်တယ်" လို့ ပြောရင် **Keep** (သိမ်းထားမယ်) ကို ရွေးပါ။
 
 ### အဆင့် 3.2 — Install လုပ်ပါ
 
-1. Download ထားတဲ့ `MyanmarFlow-Setup.exe` ကို **double-click** နှိပ်ပါ။
+1. Download ထားတဲ့ `CrashFlow-Setup.exe` ကို **double-click** နှိပ်ပါ။
 2. **အပြာရောင် box** — **"Windows protected your PC"** ပေါ်လာပါလိမ့်မယ်။ ဒါ ပုံမှန်ပါပဲ:
    - ① box ထဲက **More info** ဆိုတဲ့ စာကို နှိပ်ပါ
    - ② ပေါ်လာတဲ့ **Run anyway** ခလုတ်ကို နှိပ်ပါ
 
-   🤔 **ဘာလို့ ဒီ box ပေါ်တာလဲ?** Myanmar Flow က အခမဲ့ open-source program ဖြစ်လို့ Microsoft ဆီကနေ ပိုက်ဆံပေးပြီး certificate မဝယ်ထားလို့ပါ။ Virus မဟုတ်ပါဘူး — code အားလုံးကို GitHub မှာ အများပြည်သူ ကြည့်လို့ရပါတယ်။
+   🤔 **ဘာလို့ ဒီ box ပေါ်တာလဲ?** Crash Flow က အခမဲ့ open-source program ဖြစ်လို့ Microsoft ဆီကနေ ပိုက်ဆံပေးပြီး certificate မဝယ်ထားလို့ပါ။ Virus မဟုတ်ပါဘူး — code အားလုံးကို GitHub မှာ အများပြည်သူ ကြည့်လို့ရပါတယ်။
 
 3. Install window မှာ:
-   - ✅ **Start Myanmar Flow when Windows starts** — အမှန်ခြစ်ထားပါ (ကွန်ပျူတာဖွင့်တာနဲ့ အလိုလို ပွင့်လာမယ်)
+   - ✅ **Start Crash Flow when Windows starts** — အမှန်ခြစ်ထားပါ (ကွန်ပျူတာဖွင့်တာနဲ့ အလိုလို ပွင့်လာမယ်)
    - ☐ **Create a desktop shortcut** — Desktop မှာ icon လိုချင်ရင် ခြစ်ပါ
    - **Next → Install → Finish** နှိပ်ပါ
-4. Install ပြီးတာနဲ့ Myanmar Flow က အလိုလို ပွင့်လာပြီး **Setup wizard** ပေါ်လာပါမယ်။
+4. Install ပြီးတာနဲ့ Crash Flow က အလိုလို ပွင့်လာပြီး **Setup wizard** ပေါ်လာပါမယ်။
 
 💡 Admin password မလိုပါဘူး။ Install လုပ်ရတာ ၁၀ စက္ကန့်လောက်ပဲ ကြာပါတယ်။
 
@@ -196,7 +196,7 @@ Google က Gemini API ကို [သုံးခွင့်ပြုထား�
 3. ပထမဆုံးအကြိမ်ဆိုရင် စည်းကမ်းချက်တွေ ပြပါလိမ့်မယ် — ဖတ်ပြီး လက်ခံပါ
 4. **Create API key** ခလုတ်ကို နှိပ်ပါ
 5. `AIza...` နဲ့စတဲ့ စာတန်းရှည်ကြီး ပေါ်လာပါမယ် — ဘေးက **Copy** ကို နှိပ်ပါ
-6. Myanmar Flow wizard ကို ပြန်သွားပြီး အကွက်ထဲမှာ **Paste** လုပ်ပါ (`Ctrl + V`)
+6. Crash Flow wizard ကို ပြန်သွားပြီး အကွက်ထဲမှာ **Paste** လုပ်ပါ (`Ctrl + V`)
 7. **စစ်ဆေးမယ် →** ကို နှိပ်ပါ
 
 | ရလဒ် | အဓိပ္ပာယ် |
@@ -209,16 +209,16 @@ Google က Gemini API ကို [သုံးခွင့်ပြုထား�
 🔒 **API key ကို ဘယ်သူ့ကိုမှ မပေးပါနဲ့** (Facebook မှာ မတင်ပါနဲ့၊ screenshot မပို့ပါနဲ့)။ ကိုယ့် key နဲ့ တခြားသူ သုံးရင် ကိုယ့် limit ကုန်သွားပါမယ်။
 
 <a id="code"></a>
-**🎫 Myanmar Flow Code (key မယူချင်ရင်)**
+**🎫 Crash Flow Code (key မယူချင်ရင်)**
 
-Key မယူချင်ရင်၊ VPN မသုံးချင်ရင် (ဒါမှမဟုတ် အခမဲ့ key ရဲ့ တစ်ရက် limit မလောက်ရင်) **Myanmar Flow Code** (`MF-XXXX-XXXX`) ကို မိနစ်နဲ့ ဝယ်သုံးလို့ရပါတယ် (တစ်မိနစ် 99 ကျပ်)။
+Key မယူချင်ရင်၊ VPN မသုံးချင်ရင် (ဒါမှမဟုတ် အခမဲ့ key ရဲ့ တစ်ရက် limit မလောက်ရင်) **Crash Flow Code** (`MF-XXXX-XXXX`) ကို မိနစ်နဲ့ ဝယ်သုံးလို့ရပါတယ် (တစ်မိနစ် 99 ကျပ်)။
 
 - **အရင် စမ်းကြည့်ချင်ရင်** — Setup wizard မှာ **🎁 အခမဲ့ ၅ မိနစ် စမ်းမယ်** ကို နှိပ်ပါ။ Code က အလိုလို ဝင်လာပါမယ် (စက်တစ်လုံးကို တစ်ခါ၊ ၇ ရက်)
-- **ဝယ်ရန်** — [myanmar-flow.thecrasho.com/buy](https://myanmar-flow.thecrasho.com/buy) (ဒါမှမဟုတ် app ထဲက **💳 မိနစ် ဝယ်မယ်**) မှာ မိနစ် ရွေး → KBZPay / WavePay နဲ့ ပေး → screenshot ထည့်ပါ။ ငွေဝင်တာ အတည်ဖြစ်တာနဲ့ Code ကို ချက်ချင်း ရပါမယ်
+- **ဝယ်ရန်** — [crashflow.thecrasho.com/buy](https://crashflow.thecrasho.com/buy) (ဒါမှမဟုတ် app ထဲက **💳 မိနစ် ဝယ်မယ်**) မှာ မိနစ် ရွေး → KBZPay / WavePay နဲ့ ပေး → screenshot ထည့်ပါ။ ငွေဝင်တာ အတည်ဖြစ်တာနဲ့ Code ကို ချက်ချင်း ရပါမယ်
 - **သက်တမ်း** — ၆၀ မိနစ်အောက် ၃၀ ရက်၊ ၁-၃ နာရီအောက် ၉၀ ရက်၊ ၃ နာရီနဲ့ အထက် ၁ နှစ်။ ငွေဖြည့်တိုင်း ပြန်စပါတယ်
 - **Code ပျောက်သွားရင်** — ဝယ်ရန် page အောက်ဆုံးမှာ ဝယ်တုန်းက email နဲ့ ငွေလွှဲ **Transaction ID** ထည့်ပြီး ပြန်ယူပါ
 
-1. Code ကို key ထည့်တဲ့ အကွက်ထဲမှာပဲ Paste လုပ်ပြီး **စစ်ဆေးမယ်** နှိပ်ပါ (Settings → **Myanmar Flow Code** မှာလည်း ထည့်လို့ရ)
+1. Code ကို key ထည့်တဲ့ အကွက်ထဲမှာပဲ Paste လုပ်ပြီး **စစ်ဆေးမယ်** နှိပ်ပါ (Settings → **Crash Flow Code** မှာလည်း ထည့်လို့ရ)
 2. ပြောသလောက် မိနစ် လျော့သွားပါမယ်။ AI စာပြင် / English ဘာသာပြန် တစ်ကြိမ်ဆို ၅ စက္ကန့်
 3. လက်ကျန်နဲ့ သက်တမ်းကို tray menu က **⏳ လက်ကျန်** မှာ ကြည့်ပါ။ ၁၀ မိနစ်အောက် ရောက်ရင် အသိပေးပါမယ်
 4. မိနစ်ကုန်ရင် **💳 မိနစ် ဝယ်မယ်** နဲ့ ဖြည့်ပါ — Code အဟောင်းထဲကို တန်းဝင်လို့ ဘာမှ ပြန်ထည့်စရာ မလိုပါ
@@ -272,7 +272,7 @@ Key မယူချင်ရင်၊ VPN မသုံးချင်ရင် (
 
 📋 **Cursor ချဖို့ မေ့သွားရင်?** စိတ်မပူပါနဲ့ — ပြောတဲ့စာကို အလိုလို **Copy ကူးထားပေး**ပါတယ်။ စာရိုက်ချင်တဲ့ အကွက်ကို နှိပ်ပြီး **`Ctrl + V`** နှိပ်လိုက်ရင် ဝင်လာပါမယ်။ ပြန်ပြောစရာ မလိုပါ။
 
-⌨️ **ညာဘက် Ctrl ဆိုတာ** Keyboard အောက်ဆုံးတန်း၊ Space bar ရဲ့ ညာဘက်နားမှာ ရှိပါတယ်။ (ဘယ်ဘက် Ctrl က ပုံမှန် Copy/Paste အတွက် ဆက်သုံးလို့ရပါတယ် — Myanmar Flow က ဘယ်ဘက် Ctrl ကို မတုံ့ပြန်ပါဘူး)
+⌨️ **ညာဘက် Ctrl ဆိုတာ** Keyboard အောက်ဆုံးတန်း၊ Space bar ရဲ့ ညာဘက်နားမှာ ရှိပါတယ်။ (ဘယ်ဘက် Ctrl က ပုံမှန် Copy/Paste အတွက် ဆက်သုံးလို့ရပါတယ် — Crash Flow က ဘယ်ဘက် Ctrl ကို မတုံ့ပြန်ပါဘူး)
 
 Laptop တချို့မှာ ညာဘက် Ctrl မပါရင် Settings မှာ တခြား key ပြောင်းလို့ရပါတယ် → [အပိုင်း ၁၀](#s10)
 
@@ -340,7 +340,7 @@ Pill က ကိုယ်ရိုက်နေတဲ့ app ကို မနှ�
 
 ## 9. Tray icon နဲ့ menu
 
-Myanmar Flow က window မရှိဘဲ **နာရီဘေးနားမှာ** icon လေးအနေနဲ့ နေပါတယ်။
+Crash Flow က window မရှိဘဲ **နာရီဘေးနားမှာ** icon လေးအနေနဲ့ နေပါတယ်။
 
 ![Tray icon အရောင်များ](images/tray-icons.png)
 
@@ -414,7 +414,7 @@ Tray icon → Right-click → **📝 စကားလုံးနဲ့ Shortcut.
 AI က သင့်နာမည်၊ ဆိုင်နာမည် စတာတွေကို အမြဲ မှားရေးနေရင် `မှားတာ => မှန်တာ` ရေးထားပါ:
 
 ```
-မြန်မာဖလိုး => Myanmar Flow
+မြန်မာဖလိုး => Crash Flow
 ကျော်စင် => ကျော်ဇင်
 ```
 
@@ -490,7 +490,7 @@ Hotkey အကွက်မှာ key နာမည်ကို English စာလ�
 သင့်နာမည်၊ ကုမ္ပဏီနာမည်၊ မြို့နာမည် စတာတွေ မကြာခဏ မှားနေရင် ထည့်ပါ:
 
 ```
-ကျော်ဇင်, ရွှေတောင်ကုမ္ပဏီ, မော်လမြိုင်, Myanmar Flow
+ကျော်ဇင်, ရွှေတောင်ကုမ္ပဏီ, မော်လမြိုင်, Crash Flow
 ```
 
 ---
@@ -520,7 +520,7 @@ Hotkey အကွက်မှာ key နာမည်ကို English စာလ�
 
 ## 12. အသုံးပြုနိုင်တဲ့ အကြိမ်ရေ (limit) နဲ့ ကုန်ကျစရိတ်
 
-**Myanmar Flow က ဘာမှ ကန့်သတ်မထားပါဘူး၊ ပိုက်ဆံလည်း မယူပါဘူး။** ကန့်သတ်ချက်က Google ဘက်က ဖြစ်ပါတယ်။
+**Crash Flow က ဘာမှ ကန့်သတ်မထားပါဘူး၊ ပိုက်ဆံလည်း မယူပါဘူး။** ကန့်သတ်ချက်က Google ဘက်က ဖြစ်ပါတယ်။
 
 | | Free (အခမဲ့) | Billing ဖွင့်ထားရင် |
 |---|---|---|
@@ -545,15 +545,15 @@ Hotkey အကွက်မှာ key နာမည်ကို English စာလ�
 Version အသစ် ထွက်ရင်:
 1. နာရီဘေးမှာ **"Version x.x.x ထွက်ပါပြီ"** notification ပေါ်လာပါမယ်
 2. Tray icon → Right-click → **⬆ Version အသစ် ရယူရန်** နှိပ်ပါ
-3. ပွင့်လာတဲ့ စာမျက်နှာကနေ **`MyanmarFlow-Setup.exe`** ကို download လုပ်ပြီး install လုပ်ပါ
+3. ပွင့်လာတဲ့ စာမျက်နှာကနေ **`CrashFlow-Setup.exe`** ကို download လုပ်ပြီး install လုပ်ပါ
 4. ဟောင်းတဲ့ version ပေါ်ကို အလိုလို အစားထိုးပေးပါတယ် — **API key နဲ့ setting တွေ မပျောက်ပါဘူး**
 
-v1.0.x သုံးနေသူတွေကတော့ notification မရပါဘူး (v1.1.0 ကစပြီး ပါတာမို့) — [Releases](https://github.com/ThecrashO/myanmar-flow/releases/latest) ကနေ ကိုယ်တိုင် download လုပ်ပါ။
+v1.0.x သုံးနေသူတွေကတော့ notification မရပါဘူး (v1.1.0 ကစပြီး ပါတာမို့) — [Releases](https://github.com/ThecrashO/crash-flow/releases/latest) ကနေ ကိုယ်တိုင် download လုပ်ပါ။
 
 ### Uninstall (ဖျက်ချင်ရင်)
 
 1. Windows **Settings → Apps → Installed apps**
-2. **Myanmar Flow** ကိုရှာ → **⋯** → **Uninstall**
+2. **Crash Flow** ကိုရှာ → **⋯** → **Uninstall**
 3. Program နဲ့ setting တွေ (API key အပါအဝင်) အကုန် ဖျက်ပေးပါတယ်
 
 ---
@@ -581,14 +581,14 @@ v1.0.x သုံးနေသူတွေကတော့ notification မရပ�
 
 | ပြဿနာ | ဖြေရှင်းနည်း |
 |---|---|
-| **Key နှိပ်လည်း ဘာမှ မဖြစ်ဘူး** | ① Tray icon **🟢 အစိမ်း** ဖြစ်နေလား (⚪ ဆိုရင် တစ်ချက်နှိပ်ပြီး ဖွင့်ပါ) ② Icon လုံးဝ မရှိရင် Start menu → **Myanmar Flow** ဖွင့်ပါ ③ **ညာဘက်** Ctrl ကို နှိပ်နေတာ သေချာလား |
-| **App တစ်ခုတည်းမှာပဲ မရဘူး** | အဲဒီ app က Administrator နဲ့ run နေတာ ဖြစ်နိုင်ပါတယ် (ဥပမာ game တချို့၊ Task Manager)။ Myanmar Flow ကို right-click → **Run as administrator** နဲ့ ဖွင့်ပါ |
+| **Key နှိပ်လည်း ဘာမှ မဖြစ်ဘူး** | ① Tray icon **🟢 အစိမ်း** ဖြစ်နေလား (⚪ ဆိုရင် တစ်ချက်နှိပ်ပြီး ဖွင့်ပါ) ② Icon လုံးဝ မရှိရင် Start menu → **Crash Flow** ဖွင့်ပါ ③ **ညာဘက်** Ctrl ကို နှိပ်နေတာ သေချာလား |
+| **App တစ်ခုတည်းမှာပဲ မရဘူး** | အဲဒီ app က Administrator နဲ့ run နေတာ ဖြစ်နိုင်ပါတယ် (ဥပမာ game တချို့၊ Task Manager)။ Crash Flow ကို right-click → **Run as administrator** နဲ့ ဖွင့်ပါ |
 | **Pill ပေါ်တယ်၊ လှိုင်းတွေ မလှုပ်ဘူး** | Mic က အသံ မရ — Windows sound settings မှာ mic မှန်တာ ရွေးထားလား၊ mute ဖြစ်နေလား စစ်ပါ |
 | **စာ ဝင်မလာဘူး (✅ ပြတယ်)** | Cursor ချမထားမိလို့ပါ — စာက Copy ကူးပြီးသားမို့ စာရိုက်တဲ့အကွက်ကို နှိပ်ပြီး **`Ctrl + V`** နှိပ်ပါ။ ပြန်ပြောစရာ မလိုပါ |
 | **ညာဘက် Alt နှိပ်ရင် app ရဲ့ menu ပွင့်လာတယ်** | Settings မှာ English hotkey ကို တခြား key (ဥပမာ `right shift`) ပြောင်းပါ |
 | **ကွန်ပျူတာဖွင့်ရင် အလိုလို မပွင့်ဘူး** | Settings → **Windows စဖွင့်ရင် အလိုလိုဖွင့်မယ်** ✅ ခြစ်ပြီး Save |
-| **"Myanmar Flow က ဖွင့်ထားပြီးသားပါ"** | နှစ်ခါ ဖွင့်မိလို့ပါ — tray မှာ icon ရှိပြီးသားပါ |
-| **မြန်မာစာ ကွဲနေတယ် / ဇော်ဂျီ** | Myanmar Flow က **Unicode** နဲ့ ရိုက်ပါတယ်။ ဇော်ဂျီ font သုံးထားတဲ့ ဖုန်း/ကွန်ပျူတာမှာ ကွဲမြင်ရနိုင်ပါတယ် |
+| **"Crash Flow က ဖွင့်ထားပြီးသားပါ"** | နှစ်ခါ ဖွင့်မိလို့ပါ — tray မှာ icon ရှိပြီးသားပါ |
+| **မြန်မာစာ ကွဲနေတယ် / ဇော်ဂျီ** | Crash Flow က **Unicode** နဲ့ ရိုက်ပါတယ်။ ဇော်ဂျီ font သုံးထားတဲ့ ဖုန်း/ကွန်ပျူတာမှာ ကွဲမြင်ရနိုင်ပါတယ် |
 
 ### Log ဖိုင်
 
@@ -604,7 +604,7 @@ Log ထဲမှာ **ပြောတဲ့စာ မပါပါဘူး** (�
 <details>
 <summary><b>ပိုက်ဆံ ပေးရလား?</b></summary>
 
-Myanmar Flow က **အခမဲ့** ပါ။ Google API key ကလည်း free tier နဲ့ အခမဲ့ သုံးလို့ရပါတယ် (တစ်ရက် limit ရှိ)။ အများကြီး သုံးချင်ရင် Google ကို billing ဖွင့်ပြီး သုံးသလောက် ပေးရပါတယ် — [အပိုင်း ၁၂](#s12)။
+Crash Flow က **အခမဲ့** ပါ။ Google API key ကလည်း free tier နဲ့ အခမဲ့ သုံးလို့ရပါတယ် (တစ်ရက် limit ရှိ)။ အများကြီး သုံးချင်ရင် Google ကို billing ဖွင့်ပြီး သုံးသလောက် ပေးရပါတယ် — [အပိုင်း ၁၂](#s12)။
 </details>
 
 <details>
@@ -622,7 +622,7 @@ Myanmar Flow က **အခမဲ့** ပါ။ Google API key ကလည်း fr
 <details>
 <summary><b>ပြောတဲ့ အသံတွေ ဘယ်ကို ရောက်သွားလဲ?</b></summary>
 
-သင့်ကိုယ်ပိုင် API key နဲ့ **Google Gemini ဆီကိုပဲ** ပို့ပါတယ်။ Myanmar Flow မှာ ကိုယ်ပိုင် server မရှိပါဘူး — [အပိုင်း ၁၆](#s16)။
+သင့်ကိုယ်ပိုင် API key နဲ့ **Google Gemini ဆီကိုပဲ** ပို့ပါတယ်။ Crash Flow မှာ ကိုယ်ပိုင် server မရှိပါဘူး — [အပိုင်း ၁၆](#s16)။
 </details>
 
 <details>
@@ -666,11 +666,11 @@ Paste မလုပ်ရသေးတာ ရှိရင် အရင် paste �
 
 - 🎙️ **Key ဖိထားချိန်မှာပဲ** အသံဖမ်းပါတယ်။ ကျန်တဲ့အချိန် mic ကို မသုံးပါဘူး။
 - 📤 အသံနဲ့ စာကို **သင့် API key နဲ့ Google Gemini ဆီကိုပဲ** ပို့ပါတယ်။ ကြားထဲမှာ တခြား server မရှိပါဘူး။ Google က data ကို ဘယ်လို ကိုင်တွယ်လဲဆိုတာ [Gemini API Terms](https://ai.google.dev/gemini-api/terms) မှာ ဖတ်နိုင်ပါတယ်။
-- 💾 API key နဲ့ setting တွေကို **သင့်ကွန်ပျူတာထဲမှာပဲ** သိမ်းပါတယ် (`%APPDATA%\MyanmarFlow\config.json`)။
+- 💾 API key နဲ့ setting တွေကို **သင့်ကွန်ပျူတာထဲမှာပဲ** သိမ်းပါတယ် (`%APPDATA%\CrashFlow\config.json`)။
 - 📝 Log ဖိုင်ထဲမှာ **ပြောတဲ့စာကို မသိမ်းပါဘူး**။
 - 🕘 **မကြာခင်က စာများ** စာရင်းကို memory ထဲမှာပဲ ထားပြီး app ပိတ်ရင် ပျောက်ပါတယ်။ Dashboard အတွက် **ဂဏန်းတွေ** (ရက်စွဲ၊ စာလုံးအရေအတွက်၊ ပြောတဲ့ စက္ကန့်) ကိုပဲ `stats.json` မှာ သိမ်းပါတယ်။
 - 🔄 Update ရှိမရှိ စစ်ဖို့ တစ်ရက်တစ်ခါ GitHub ကို နောက်ဆုံး version နံပါတ် မေးပါတယ် (သင့်အသံ၊ စာ၊ key မပို့ပါ)။ Settings မှာ ပိတ်လို့ရပါတယ်။
-- 🔓 Code အားလုံးကို [GitHub](https://github.com/ThecrashO/myanmar-flow) မှာ ဘယ်သူမဆို စစ်ကြည့်လို့ရပါတယ်။
+- 🔓 Code အားလုံးကို [GitHub](https://github.com/ThecrashO/crash-flow) မှာ ဘယ်သူမဆို စစ်ကြည့်လို့ရပါတယ်။
 
 ---
 
@@ -680,7 +680,7 @@ Paste မလုပ်ရသေးတာ ရှိရင် အရင် paste �
 
 ဒီလမ်းညွှန်မှာ အဖြေမတွေ့ရင်:
 
-1. Tray icon → Right-click → **ပြဿနာတင်ပြရန်** (သို့မဟုတ် 👉 [ဒီမှာ နှိပ်ပါ](https://github.com/ThecrashO/myanmar-flow/issues/new/choose))
+1. Tray icon → Right-click → **ပြဿနာတင်ပြရန်** (သို့မဟုတ် 👉 [ဒီမှာ နှိပ်ပါ](https://github.com/ThecrashO/crash-flow/issues/new/choose))
 2. **🐞 ပြဿနာ တင်ပြရန်** ကို ရွေးပြီး form ကို ဖြည့်ပါ — မြန်မာလို ရေးလို့ရပါတယ်
 3. GitHub account လိုပါတယ် (အခမဲ့ — [github.com/signup](https://github.com/signup))
 
@@ -692,7 +692,7 @@ Paste မလုပ်ရသေးတာ ရှိရင် အရင် paste �
 
 🔒 **API key ကို ဘယ်တော့မှ မတင်ပါနဲ့။** Screenshot / log မှာ key ပါမပါ အရင် စစ်ပါ။
 
-**အကြံဉာဏ် ပေးချင်ရင်** 👉 [💡 Feature အကြံပြုရန်](https://github.com/ThecrashO/myanmar-flow/issues/new/choose)
+**အကြံဉာဏ် ပေးချင်ရင်** 👉 [💡 Feature အကြံပြုရန်](https://github.com/ThecrashO/crash-flow/issues/new/choose)
 
 ---
 
@@ -715,5 +715,5 @@ Paste မလုပ်ရသေးတာ ရှိရင် အရင် paste �
 ---
 
 <p align="center">
-<a href="../README.md">⬅️ README သို့ ပြန်သွားရန်</a> · <a href="https://github.com/ThecrashO/myanmar-flow/releases/latest">⬇️ Download</a>
+<a href="../README.md">⬅️ README သို့ ပြန်သွားရန်</a> · <a href="https://github.com/ThecrashO/crash-flow/releases/latest">⬇️ Download</a>
 </p>

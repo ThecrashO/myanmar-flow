@@ -4,7 +4,7 @@ import sys
 import tkinter as tk
 
 sys.path.insert(0, sys.argv[1])
-import myanmar_flow as mf  # noqa: E402
+import crash_flow as mf  # noqa: E402
 
 out = sys.argv[2]
 assert mf.normalize_burmese("၁ဝ") == "၁၀"

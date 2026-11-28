@@ -1,4 +1,4 @@
-"""Windows pieces of Myanmar Flow: the floating pill window, global hotkeys, paste,
+"""Windows pieces of Crash Flow: the floating pill window, global hotkeys, paste,
 beeps, start-with-Windows, the single-instance mutex and dialogs.
 platform_mac.py has the same functions for macOS."""
 
@@ -249,7 +249,8 @@ def beep(freq, ms):
 # ---------------------------------------------------------------- start with Windows
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-APP_KEY = "Myanmar Flow"
+APP_KEY = "Crash Flow"
+OLD_APP_KEY = "Myanmar Flow"  # the app's name before 1.4
 
 
 def launch_command():
@@ -279,9 +280,28 @@ def set_autostart(enabled):
                 pass
 
 
+def move_autostart():
+    """If an older copy (or this one in another folder) starts with Windows, start this one instead."""
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_QUERY_VALUE | winreg.KEY_SET_VALUE) as key:
+        was = False
+        try:
+            winreg.QueryValueEx(key, OLD_APP_KEY)
+            winreg.DeleteValue(key, OLD_APP_KEY)
+            was = True
+        except OSError:
+            pass
+        try:
+            was = was or winreg.QueryValueEx(key, APP_KEY)[0] != launch_command()
+        except OSError:
+            pass
+        if was:
+            winreg.SetValueEx(key, APP_KEY, 0, winreg.REG_SZ, launch_command())
+
+
 # ---------------------------------------------------------------- single instance, files, dialogs
 
 def already_running(data_dir=None):
+    # The old name on purpose: an old Myanmar Flow and a new Crash Flow never run together.
     ctypes.windll.kernel32.CreateMutexW(None, False, "MyanmarFlowSingleInstance")
     return ctypes.windll.kernel32.GetLastError() == 183  # ERROR_ALREADY_EXISTS
 

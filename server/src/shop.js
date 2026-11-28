@@ -98,7 +98,7 @@ function publicOrder(order, url) {
     expired: !paid && Date.now() - Date.parse(order.created_at) > ORDER_DAYS * DAY,
     days: validDays(order.minutes), expires_at: paid ? order.expires_at || null : null,
     max_amount: upTo(order.amount), help_left: Math.max(0, HELP_MESSAGES - (order.help_sent || 0)),
-    pay_to: PAY_TO, wallets: ["KBZPay", "WavePay"], note: "Myanmar Flow",
+    pay_to: PAY_TO, wallets: ["KBZPay", "WavePay"], note: "Crash Flow",
     buy_url: `${url.origin}/buy?order=${order.id}`,
   };
 }
@@ -680,7 +680,7 @@ export async function shopAdmin(request, env, url, parts) {
   if (parts[3] === "telegram" && post) {
     if (!env.TELEGRAM_BOT_TOKEN) return fail(400, "mf_no_bot", "Put the TELEGRAM_BOT_TOKEN secret first");
     if (parts[4] === "test") {
-      const sent = await tell(env, "🔔 Myanmar Flow — စမ်းပို့တာပါ။ ဒီစာ ရရင် အဆင်ပြေပါပြီ။");
+      const sent = await tell(env, "🔔 Crash Flow — စမ်းပို့တာပါ။ ဒီစာ ရရင် အဆင်ပြေပါပြီ။");
       return sent ? json({ ok: true }) : fail(400, "mf_telegram", "Not linked yet, or Telegram refused");
     }
     // Point the bot at this server and make a one-time link for the owner to press Start.

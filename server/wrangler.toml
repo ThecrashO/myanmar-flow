@@ -18,6 +18,12 @@ database_name = "myanmar-flow"
 database_id = "78dbb0a2-8653-4238-b9d0-624e3b36b164"
 
 # Served at the owner's own domain (thecrasho.com is on this Cloudflare account).
+# The app was called Myanmar Flow until 1.4. Its Worker and database keep that name (the
+# secrets live on the Worker), and its old address stays on for copies of the app before 1.4.
+[[routes]]
+pattern = "crashflow.thecrasho.com"
+custom_domain = true
+
 [[routes]]
 pattern = "myanmar-flow.thecrasho.com"
 custom_domain = true

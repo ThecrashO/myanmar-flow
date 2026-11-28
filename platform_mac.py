@@ -1,4 +1,4 @@
-"""macOS pieces of Myanmar Flow: the floating pill window, global hotkeys, paste,
+"""macOS pieces of Crash Flow: the floating pill window, global hotkeys, paste,
 beeps, start-at-login, the single-instance lock and the permission checks.
 
 Everything that touches AppKit runs on the main thread (the Tk thread), because
@@ -214,6 +214,8 @@ def beep(freq, ms):
 
 # ---------------------------------------------------------------- start at login
 
+# The id is from when the app was called Myanmar Flow. It stays, like the app's bundle id,
+# so macOS keeps the microphone and Accessibility permissions people already gave.
 AGENT_PATH = Path.home() / "Library" / "LaunchAgents" / "com.thecrasho.myanmarflow.plist"
 
 
@@ -238,6 +240,12 @@ def set_autostart(enabled):
         }))
     elif AGENT_PATH.exists():
         AGENT_PATH.unlink()
+
+
+def move_autostart():
+    """Point "start at login" at this copy (the app was renamed in 1.4, so it may have moved)."""
+    if AGENT_PATH.exists() and plistlib.loads(AGENT_PATH.read_bytes()).get("ProgramArguments") != _launch_args():
+        set_autostart(True)
 
 
 # ---------------------------------------------------------------- single instance, files, dialogs

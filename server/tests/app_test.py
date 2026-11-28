@@ -14,7 +14,7 @@ import requests
 
 sys.stdout.reconfigure(encoding="utf-8")
 HERE = Path(__file__).resolve().parent
-BASE = (sys.argv[1] if len(sys.argv) > 1 else "https://myanmar-flow.thecrasho.com").rstrip("/")
+BASE = (sys.argv[1] if len(sys.argv) > 1 else "https://crashflow.thecrasho.com").rstrip("/")
 WAV = sys.argv[2] if len(sys.argv) > 2 else str(HERE / "speech.wav")
 
 
@@ -31,7 +31,7 @@ def admin_token():
 ADMIN = {"authorization": "Bearer " + admin_token()}
 os.environ["MF_SERVER"] = BASE
 sys.path.insert(0, str(HERE.parents[1]))
-import myanmar_flow as mf  # noqa: E402
+import crash_flow as mf  # noqa: E402
 
 code = requests.post(BASE + "/admin/api/codes", headers=ADMIN, json={"note": "app_test", "minutes": 3}).json()["code"]
 cfg = dict(mf.load_config(), api_key="", pro_code=code, polish=True)

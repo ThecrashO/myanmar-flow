@@ -1,4 +1,4 @@
-// Myanmar Flow top-up server (Cloudflare Worker). Selling codes is in shop.js.
+// Crash Flow top-up server (Cloudflare Worker). Selling codes is in shop.js.
 //
 // The app talks to this server with a top-up code instead of a Gemini API key. The
 // server checks the code, forwards the request to Google with the owner's key, and
@@ -32,7 +32,7 @@ export default {
     const url = new URL(request.url);
     try {
       if (url.pathname === "/") return new Response(landingPage, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
-      if (url.pathname === "/health") return text("Myanmar Flow server");
+      if (url.pathname === "/health") return text("Crash Flow server");
       if (url.pathname === "/admin") return new Response(adminPage, { headers: { "content-type": "text/html; charset=utf-8" } });
       if (url.pathname.startsWith("/admin/api/")) return await admin(request, env, url);
       if (url.pathname === "/mf/balance") return await balance(request, env);

@@ -6,7 +6,7 @@ export const adminPage = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Myanmar Flow codes</title>
+<title>Crash Flow codes</title>
 <style>
   :root { --bg:#f7f7f8; --card:#fff; --text:#18181b; --muted:#6b7280; --line:#e4e4e7; --accent:#2563eb; --ok:#15803d; --bad:#b91c1c; }
   @media (prefers-color-scheme: dark) { :root { --bg:#111113; --card:#1c1c1f; --text:#ececef; --muted:#9ca3af; --line:#2e2e33; --accent:#60a5fa; --ok:#4ade80; --bad:#f87171; } }
@@ -37,7 +37,7 @@ export const adminPage = `<!doctype html>
 </head>
 <body>
 <main>
-  <h1>Myanmar Flow · codes</h1>
+  <h1>Crash Flow · codes</h1>
   <div class="card row">
     <input id="token" type="password" placeholder="Admin token" style="flex:1" autocomplete="off">
     <button id="login" class="primary">ဝင်မယ်</button>

@@ -1,12 +1,12 @@
 name: "🐞 ပြဿနာ တင်ပြရန် (Report a problem)"
-description: Myanmar Flow အလုပ်မလုပ်ရင် ဒီမှာ ပြောပြပါ — မြန်မာလို ရေးလို့ရပါတယ်
+description: Crash Flow အလုပ်မလုပ်ရင် ဒီမှာ ပြောပြပါ — မြန်မာလို ရေးလို့ရပါတယ်
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
         အကူအညီ တောင်းတဲ့အတွက် ကျေးဇူးပါ 🙏
-        မတင်ခင် [ပြဿနာဖြေရှင်းနည်း](https://github.com/ThecrashO/myanmar-flow/blob/main/docs/GUIDE.md#s14) နဲ့ [FAQ](https://github.com/ThecrashO/myanmar-flow/blob/main/docs/GUIDE.md#s15) ကို အရင်ကြည့်ပေးပါ — အဖြေ ရှိပြီးသား ဖြစ်နိုင်ပါတယ်။
+        မတင်ခင် [ပြဿနာဖြေရှင်းနည်း](https://github.com/ThecrashO/crash-flow/blob/main/docs/GUIDE.md#s14) နဲ့ [FAQ](https://github.com/ThecrashO/crash-flow/blob/main/docs/GUIDE.md#s15) ကို အရင်ကြည့်ပေးပါ — အဖြေ ရှိပြီးသား ဖြစ်နိုင်ပါတယ်။
 
         > 🔒 **API key ကို ဒီမှာ လုံးဝ မထည့်ပါနဲ့။** Screenshot နဲ့ log မှာ key ပါမပါ အရင်စစ်ပါ။
   - type: textarea

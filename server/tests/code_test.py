@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 HERE = Path(__file__).resolve().parent
-BASE = (sys.argv[1] if len(sys.argv) > 1 else "https://myanmar-flow.thecrasho.com").rstrip("/")
+BASE = (sys.argv[1] if len(sys.argv) > 1 else "https://crashflow.thecrasho.com").rstrip("/")
 WAV = sys.argv[2] if len(sys.argv) > 2 else str(HERE / "speech.wav")
 CODE = os.environ.get("MF_TEST_CODE", "").strip()
 if not CODE:
@@ -21,7 +21,7 @@ if not CODE:
 
 os.environ["MF_SERVER"] = BASE
 sys.path.insert(0, str(HERE.parents[1]))
-import myanmar_flow as mf  # noqa: E402  (also imports this OS's platform module)
+import crash_flow as mf  # noqa: E402  (also imports this OS's platform module)
 
 ok = True
 
@@ -32,7 +32,7 @@ def check(name, cond, detail=""):
     print(("PASS " if cond else "FAIL ") + name, detail)
 
 
-print(f"{platform.system()} {platform.machine()}, Python {platform.python_version()}, Myanmar Flow {mf.APP_VERSION}")
+print(f"{platform.system()} {platform.machine()}, Python {platform.python_version()}, Crash Flow {mf.APP_VERSION}")
 cfg = dict(mf.DEFAULT_CONFIG, pro_code=CODE, polish=True)  # fresh settings, nothing read or saved
 check("code mode on", mf.using_code(cfg) and mf.has_credentials(cfg) and mf.api_base(cfg) == BASE)
 

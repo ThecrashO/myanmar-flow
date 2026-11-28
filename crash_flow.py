@@ -1,4 +1,4 @@
-"""Myanmar Flow - hold a hotkey, speak Burmese, release, and the text is pasted
+"""Crash Flow - hold a hotkey, speak Burmese, release, and the text is pasted
 into whatever app has focus. Runs in the system tray (menu bar on macOS); uses
 Google Gemini for transcription. Platform-specific parts live in platform_win.py
 and platform_mac.py."""
@@ -40,22 +40,35 @@ if IS_MAC:
 else:
     import platform_win as plat
 
-APP_NAME = "Myanmar Flow"
-APP_VERSION = "1.3.8"
-REPO_URL = "https://github.com/ThecrashO/myanmar-flow"
-DATA_DIR = (Path.home() / "Library" / "Application Support" / "MyanmarFlow" if IS_MAC
-            else Path(os.environ.get("APPDATA", Path.home())) / "MyanmarFlow")
+APP_NAME = "Crash Flow"
+APP_VERSION = "1.4.0"
+REPO_URL = "https://github.com/ThecrashO/crash-flow"
+
+
+def _data_dir():
+    """The settings folder. The app was called Myanmar Flow until 1.4: its folder is moved over."""
+    base = Path.home() / "Library" / "Application Support" if IS_MAC else Path(os.environ.get("APPDATA", Path.home()))
+    new, old = base / "CrashFlow", base / "MyanmarFlow"
+    if not new.exists() and old.exists():
+        try:
+            old.rename(new)
+        except OSError:  # e.g. the old version is still running and holds its log open
+            return old
+    return new
+
+
+DATA_DIR = _data_dir()
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CONFIG_PATH = DATA_DIR / "config.json"
 STATS_PATH = DATA_DIR / "stats.json"
-LOG_PATH = DATA_DIR / "myanmar_flow.log"
+LOG_PATH = DATA_DIR / "crash_flow.log"
 GOOGLE_API = "https://generativelanguage.googleapis.com"
 LIVE_PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
-# The owner's top-up server: people with a Myanmar Flow code use it instead of their own key.
+# The owner's top-up server: people with a Crash Flow code use it instead of their own key.
 # It speaks the same paths as Google, so only the address and the login change.
-CODE_SERVER = os.environ.get("MF_SERVER", "https://myanmar-flow.thecrasho.com")
+CODE_SERVER = os.environ.get("MF_SERVER", "https://crashflow.thecrasho.com")
 SAMPLE_RATE = 16000
-UPDATE_API = "https://api.github.com/repos/ThecrashO/myanmar-flow/releases/latest"
+UPDATE_API = "https://api.github.com/repos/ThecrashO/crash-flow/releases/latest"
 MAX_RECORD_SECONDS = 300
 PASTE_KEYS = "⌘V" if IS_MAC else "Ctrl+V"
 UI_FONT = "Helvetica Neue" if IS_MAC else "Segoe UI"
@@ -1055,7 +1068,7 @@ class SettingsWindow:
             self.balance = ttk.Label(buy_row, text="", foreground="#6b7280")
             self.balance.pack(side="left")
             ttk.Button(buy_row, text="💳 မိနစ် ဝယ်မယ်", command=app.open_buy).pack(side="right")
-            rows += [("Myanmar Flow Code (key အစား)", ttk.Entry(frm, textvariable=self.vars["pro_code"], width=44)),
+            rows += [("Crash Flow Code (key အစား)", ttk.Entry(frm, textvariable=self.vars["pro_code"], width=44)),
                      ("", buy_row)]
         rows += [
             ("Hotkey (ဖိထားပြီးပြောရန်)", ttk.Entry(frm, textvariable=self.vars["hotkey"], width=44)),
@@ -1150,7 +1163,7 @@ SNIPPET_EXAMPLE = ("# ဥပမာ (ရှေ့က # ကိုဖျက်ရ�
                    "# ငါ့ဖုန်း => 09 123 456 789\n"
                    "# ဘဏ်အကောင့် => KBZ 1234 5678 9012\\nAung Aung\n")
 FIX_EXAMPLE = ("# ဥပမာ - AI က အမြဲ မှားရေးတဲ့ စာလုံး => မှန်တဲ့ စာလုံး\n"
-               "# မြန်မာဖလိုး => Myanmar Flow\n")
+               "# မြန်မာဖလိုး => Crash Flow\n")
 
 
 class WordsWindow:
@@ -1355,14 +1368,14 @@ class SetupWizard:
 
     def step_key(self):
         self.clear(1)
-        self.title("Myanmar Flow မှ ကြိုဆိုပါတယ် 👋")
+        self.title("Crash Flow မှ ကြိုဆိုပါတယ် 👋")
         self.para("မြန်မာလို ပြောလိုက်တာကို စာအဖြစ် ချက်ချင်းရိုက်ပေးဖို့ Google Gemini API key တစ်ခု လိုပါတယ်။ "
                   "အခမဲ့ ယူလို့ရပါတယ်။")
         self.para("① အောက်က ခလုတ်ကိုနှိပ်ပြီး Google account နဲ့ ဝင်ပါ\n"
                   "② \"Create API key\" ကိုနှိပ်ပြီး key ကို Copy ကူးပါ\n"
                   "③ ဒီအောက်က အကွက်ထဲ Paste လုပ်ပြီး \"စစ်ဆေးမယ်\" နှိပ်ပါ")
         if CODE_SERVER:
-            self.para("Key မယူချင်ရင် Myanmar Flow Code နဲ့ သုံးပါ (VPN မလို)။ ဝယ်ထားတဲ့ Code ကို "
+            self.para("Key မယူချင်ရင် Crash Flow Code နဲ့ သုံးပါ (VPN မလို)။ ဝယ်ထားတဲ့ Code ကို "
                       "အောက်က အကွက်ထဲ ထည့်လို့ရပါတယ်။", foreground="#6b7280")
             codes = ttk.Frame(self.body)
             codes.pack(anchor="w", pady=(4, 0))
@@ -1541,7 +1554,7 @@ class App:
         self.live = None           # LiveTranscriber of the current recording
         self.stats = Stats()
         self.history = deque(maxlen=20)  # (datetime, text), memory only
-        self.balance = None        # seconds left on the Myanmar Flow code, if one is used
+        self.balance = None        # seconds left on the Crash Flow code, if one is used
         self.low_warned = False
 
         self.root = tk.Tk()
@@ -1920,10 +1933,14 @@ def main():
     import tkinter.messagebox  # noqa: F401  (used by SettingsWindow)
     if plat.already_running(DATA_DIR):
         where = "menu bar" if IS_MAC else "tray"
-        plat.alert(APP_NAME, f"Myanmar Flow က ဖွင့်ထားပြီးသားပါ ({where} မှာကြည့်ပါ)။")
+        plat.alert(APP_NAME, f"Crash Flow က ဖွင့်ထားပြီးသားပါ ({where} မှာကြည့်ပါ)။")
         return
     log.info("Starting %s %s (burmese text shaping: %s)", APP_NAME, APP_VERSION,
              "raqm" if HAS_RAQM else "macOS" if CAN_SHAPE else "none")
+    try:
+        plat.move_autostart()  # "start with Windows / at login" set by an older or moved copy
+    except Exception as e:
+        log.warning("autostart: %s", e)
     try:
         App().run()
     except Exception:

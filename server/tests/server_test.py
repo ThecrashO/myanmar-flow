@@ -1,7 +1,7 @@
 """End-to-end test of the code server, speaking the same protocol as the app.
 
 Usage: python server/tests/server_test.py [server url] [wav file]
-The server defaults to https://myanmar-flow.thecrasho.com and the clip to speech.wav
+The server defaults to https://crashflow.thecrasho.com and the clip to speech.wav
 (an 8.9 s English sentence). Uses real Gemini calls, about 30 s of speech in all.
 The codes it makes are switched off at the end."""
 import base64
@@ -17,7 +17,7 @@ import websocket
 
 sys.stdout.reconfigure(encoding="utf-8")
 HERE = Path(__file__).resolve().parent
-BASE = (sys.argv[1] if len(sys.argv) > 1 else "https://myanmar-flow.thecrasho.com").rstrip("/")
+BASE = (sys.argv[1] if len(sys.argv) > 1 else "https://crashflow.thecrasho.com").rstrip("/")
 WAV = sys.argv[2] if len(sys.argv) > 2 else str(HERE / "speech.wav")
 
 

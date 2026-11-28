@@ -62,7 +62,7 @@ def receipt(amount, txn, receiver="******9168", status="Transfer Successful", wh
     rows = [("Transaction Time", when.strftime("%d/%m/%Y %H:%M:%S"))]
     if txn:
         rows.append(("Transaction No.", txn))
-    rows += [("Transaction Type", "Transfer"), ("Transfer To", f"Thecrasho ({receiver})"), ("Notes", "Myanmar Flow")]
+    rows += [("Transaction Type", "Transfer"), ("Transfer To", f"Thecrasho ({receiver})"), ("Notes", "Crash Flow")]
     y = 560
     for k, v in rows:
         d.text((50, y), k, font=font(30), fill="#666")

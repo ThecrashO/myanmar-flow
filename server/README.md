@@ -1,6 +1,6 @@
-# Myanmar Flow code server
+# Crash Flow code server
 
-A small Cloudflare Worker that lets people use Myanmar Flow with a **code** (`MF-XXXX-XXXX`)
+A small Cloudflare Worker that lets people use Crash Flow with a **code** (`MF-XXXX-XXXX`)
 instead of their own Gemini API key. You sell minutes by hand, make a code on the admin page,
 and send it to them. The Worker passes their speech to Gemini with your key and takes the
 minutes off their code.
@@ -38,16 +38,16 @@ npm run deploy
 
 ## Point the app at it
 
-The app already points at `https://myanmar-flow.thecrasho.com` (set in `wrangler.toml` as a custom domain). If you move it, set `CODE_SERVER` in `myanmar_flow.py` to the new address, then build and release. For a quick
+The app already points at `https://crashflow.thecrasho.com` (set in `wrangler.toml` as a custom domain). If you move it, set `CODE_SERVER` in `crash_flow.py` to the new address, then build and release. For a quick
 test without a release, set the `MF_SERVER` environment variable before starting the app.
 
 Once a server is set, a user can paste a code in the setup wizard (in the same box as the key)
-or in Settings → "Myanmar Flow Code". The tray menu shows their minutes left, and the app warns
+or in Settings → "Crash Flow Code". The tray menu shows their minutes left, and the app warns
 them once when fewer than 10 minutes remain.
 
 ## The public page and the shop
 
-`https://myanmar-flow.thecrasho.com/` is the product page: what the app does, key vs Code
+`https://crashflow.thecrasho.com/` is the product page: what the app does, key vs Code
 (with the VPN note), prices, how to start, FAQ, and contact. Edit it in `src/landing.html` and
 run `npm run deploy`. `/health` answers with plain text for uptime checks.
 
@@ -137,7 +137,7 @@ into PowerShell once:
 ```powershell
 $a = New-ScheduledTaskAction -Execute "npm.cmd" -Argument "run backup" -WorkingDirectory "D:\Second Brain\Projects\Crash Lab\Myanmar flow\server"
 $t = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 9pm
-Register-ScheduledTask -TaskName "Myanmar Flow backup" -Action $a -Trigger $t -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable)
+Register-ScheduledTask -TaskName "Crash Flow backup" -Action $a -Trigger $t -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable)
 ```
 
 To restore a backup (this writes over the live database, so be sure):
@@ -198,6 +198,6 @@ for example `http://127.0.0.1:8787`. They make small test codes (named `server_t
 - Gemini isn't offered in Myanmar. Cloudflare normally runs a Worker at the location nearest the
   user, which for a Myanmar user can mean Google sees a Myanmar address and refuses. `wrangler.toml`
   pins the Worker to Google Cloud's Singapore region (`targeted` placement) so calls always leave
-  from Singapore. To check from any network, open `https://myanmar-flow.thecrasho.com/mf/where`:
+  from Singapore. To check from any network, open `https://crashflow.thecrasho.com/mf/where`:
   `runs_in` should be `SIN` and `google_accepts` must be `true`. (Confirmed on 2026-11-21 from
   Myanmar with no VPN.)

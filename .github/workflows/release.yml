@@ -24,10 +24,10 @@ jobs:
         run: python -m pip install -r requirements.txt pyinstaller
 
       - name: Build icon
-        run: python -c "import myanmar_flow as m; m.make_icon(m.STATE_COLORS['idle'], 256).save('icon.ico', sizes=[(16,16),(32,32),(48,48),(256,256)])"
+        run: python -c "import crash_flow as m; m.make_icon(m.STATE_COLORS['idle'], 256).save('icon.ico', sizes=[(16,16),(32,32),(48,48),(256,256)])"
 
       - name: Build exe
-        run: pyinstaller --noconfirm --onefile --windowed --name MyanmarFlow --icon icon.ico --hidden-import pystray._win32 --exclude-module platform_mac myanmar_flow.py
+        run: pyinstaller --noconfirm --onefile --windowed --name CrashFlow --icon icon.ico --hidden-import pystray._win32 --exclude-module platform_mac crash_flow.py
 
       - name: Build installer
         shell: pwsh
@@ -43,8 +43,8 @@ jobs:
         with:
           name: windows
           path: |
-            dist/MyanmarFlow.exe
-            dist/MyanmarFlow-Setup.exe
+            dist/CrashFlow.exe
+            dist/CrashFlow-Setup.exe
 
   macos:
     strategy:
@@ -53,10 +53,10 @@ jobs:
         include:
           - runner: macos-latest      # Apple Silicon (M1 and newer)
             name: macos
-            zip: MyanmarFlow-mac.zip
+            zip: CrashFlow-mac.zip
           - runner: macos-15-intel    # Intel Macs
             name: macos-intel
-            zip: MyanmarFlow-mac-intel.zip
+            zip: CrashFlow-mac-intel.zip
     runs-on: ${{ matrix.runner }}
     name: ${{ matrix.name }}
     steps:
@@ -75,30 +75,30 @@ jobs:
       - name: Build app
         run: |
           uname -m
-          python -c "import myanmar_flow as m; m.make_icon(m.STATE_COLORS['idle'], 512).save('icon.png')"
-          pyinstaller --noconfirm --windowed --name MyanmarFlow --icon icon.png \
+          python -c "import crash_flow as m; m.make_icon(m.STATE_COLORS['idle'], 512).save('icon.png')"
+          pyinstaller --noconfirm --windowed --name CrashFlow --icon icon.png \
             --osx-bundle-identifier com.thecrasho.myanmarflow \
-            --hidden-import pystray._darwin --exclude-module platform_win myanmar_flow.py
+            --hidden-import pystray._darwin --exclude-module platform_win crash_flow.py
           version="${GITHUB_REF_NAME#v}"; [ "$GITHUB_REF_TYPE" = "tag" ] || version="0.0.0"
-          plist=dist/MyanmarFlow.app/Contents/Info.plist
+          plist=dist/CrashFlow.app/Contents/Info.plist
           setkey() {  # set a key, adding it if PyInstaller didn't
             /usr/libexec/PlistBuddy -c "Set :$1 $3" "$plist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :$1 $2 $3" "$plist"
           }
           setkey CFBundleShortVersionString string "$version"
-          setkey CFBundleDisplayName string "'Myanmar Flow'"
+          setkey CFBundleDisplayName string "'Crash Flow'"
           setkey LSUIElement bool true
-          setkey NSMicrophoneUsageDescription string "'Myanmar Flow listens while you hold the hotkey and turns your speech into text.'"
+          setkey NSMicrophoneUsageDescription string "'Crash Flow listens while you hold the hotkey and turns your speech into text.'"
           # Editing Info.plist breaks PyInstaller's ad-hoc signature; Apple Silicon won't run unsigned code.
-          codesign --force --deep --sign - dist/MyanmarFlow.app
-          file dist/MyanmarFlow.app/Contents/MacOS/MyanmarFlow
-          ditto -c -k --keepParent dist/MyanmarFlow.app "dist/${{ matrix.zip }}"
+          codesign --force --deep --sign - dist/CrashFlow.app
+          file dist/CrashFlow.app/Contents/MacOS/CrashFlow
+          ditto -c -k --keepParent dist/CrashFlow.app "dist/${{ matrix.zip }}"
 
       - name: Smoke test (built app starts)
         run: |
-          dist/MyanmarFlow.app/Contents/MacOS/MyanmarFlow &
+          dist/CrashFlow.app/Contents/MacOS/CrashFlow &
           pid=$!
           sleep 12
-          log="$HOME/Library/Application Support/MyanmarFlow/myanmar_flow.log"
+          log="$HOME/Library/Application Support/CrashFlow/crash_flow.log"
           cat "$log" || true
           kill -0 $pid   # still running
           kill $pid
@@ -122,17 +122,17 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            windows/MyanmarFlow-Setup.exe
-            windows/MyanmarFlow.exe
-            macos/dist/MyanmarFlow-mac.zip
-            macos-intel/dist/MyanmarFlow-mac-intel.zip
+            windows/CrashFlow-Setup.exe
+            windows/CrashFlow.exe
+            macos/dist/CrashFlow-mac.zip
+            macos-intel/dist/CrashFlow-mac-intel.zip
           body: |
             ## Download
 
-            - **MyanmarFlow-Setup.exe** — Windows မှာ ထည့်သွင်းရန် (အကြံပြု) / Windows installer (recommended)
-            - **MyanmarFlow.exe** — Windows မှာ Install မလုပ်ဘဲ တိုက်ရိုက်ဖွင့်ရန် / Windows portable
-            - **MyanmarFlow-mac.zip** — Mac (M1, M2, M3, M4 ...) အတွက် / macOS, Apple Silicon
-            - **MyanmarFlow-mac-intel.zip** — Intel Mac အတွက် / macOS, Intel
+            - **CrashFlow-Setup.exe** — Windows မှာ ထည့်သွင်းရန် (အကြံပြု) / Windows installer (recommended)
+            - **CrashFlow.exe** — Windows မှာ Install မလုပ်ဘဲ တိုက်ရိုက်ဖွင့်ရန် / Windows portable
+            - **CrashFlow-mac.zip** — Mac (M1, M2, M3, M4 ...) အတွက် / macOS, Apple Silicon
+            - **CrashFlow-mac-intel.zip** — Intel Mac အတွက် / macOS, Intel
 
             ## ပထမဆုံးဖွင့်တဲ့အခါ သတိပေးစာ ပေါ်ရင် / A warning on first launch
 
@@ -143,6 +143,6 @@ jobs:
             - **Windows** — အပြာရောင် box ပေါ်ရင် **More info → Run anyway** / Blue box: **More info → Run anyway**
             - **Mac** — "Apple could not verify…" ပေါ်ရင် **Move to Trash** မနှိပ်ဘဲ **Done** → **System Settings → Privacy & Security → Open Anyway** → password ထည့်ပြီး **Open** / Click **Done** (not Move to Trash), then **System Settings → Privacy & Security → Open Anyway**, then **Open**
 
-            Mac ဖွင့်နည်း အသေးစိတ် / Mac steps: https://myanmar-flow.thecrasho.com/#mac
+            Mac ဖွင့်နည်း အသေးစိတ် / Mac steps: https://crashflow.thecrasho.com/#mac
 
-            Setup လမ်းညွှန်: https://github.com/ThecrashO/myanmar-flow#readme
+            Setup လမ်းညွှန်: https://github.com/ThecrashO/crash-flow#readme
