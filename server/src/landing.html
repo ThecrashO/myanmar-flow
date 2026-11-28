@@ -7,7 +7,7 @@
 <meta name="description" content="Key တစ်ချက်ဖိပြီး မြန်မာလို ပြောလိုက်ရုံနဲ့ ဘယ် app မှာမဆို စာဝင်တဲ့ Windows နဲ့ Mac app။ ကိုယ်ပိုင် key နဲ့ အခမဲ့၊ ဒါမှမဟုတ် VPN မလိုတဲ့ Code နဲ့ မိနစ်ဝယ်သုံး။">
 <meta property="og:title" content="Crash Flow — Burmese voice typing for Windows and Mac">
 <meta property="og:description" content="Key တစ်ချက်ဖိ၊ မြန်မာလို ပြော၊ လွှတ် — ဘယ် app မှာမဆို စာဝင်ပါပြီ။">
-<meta property="og:image" content="https://thecrasho.com/assets/images/projects/Crash%20Flow%20Laptop.png?v=6">
+<meta property="og:image" content="https://thecrasho.com/assets/images/projects/Crash%20Flow%20Hero.png?v=2">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0b0d1f">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2322d3ee'/%3E%3Cstop offset='1' stop-color='%23a855f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Crect x='24' y='12' width='16' height='26' rx='8' fill='white'/%3E%3Cpath d='M17 31a15 15 0 0 0 30 0M32 46v8M24 54h16' stroke='white' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -137,7 +137,8 @@
   .price .mins { font: 800 44px/1.1 "Inter", sans-serif; margin: 14px 0 0; }
   .price .mins small { font-size: 16px; font-weight: 600; color: var(--muted); }
   .price .ks { font: 700 22px "Inter", "Noto Sans Myanmar", sans-serif; color: var(--accent); margin-top: 8px; }
-  .price .per { color: var(--muted); font-size: 14px; }
+  .price .per { color: var(--muted); font-size: 14px; margin: 2px 0 0; }
+  .price .per b { font-size: 16px; background: var(--flow); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .price .valid { display: inline-block; margin: 8px 0 4px; padding: 2px 10px; border-radius: 999px; background: var(--tint); color: var(--text); font-size: 13.5px; font-weight: 600; }
   .price .valid.best-valid { background: var(--flow); color: #fff; }
   .price.best { border: 2px solid var(--accent); }
@@ -182,7 +183,7 @@
   .steps > li > div { min-width: 0; }
   .steps > li { list-style: none; counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start;
               background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
-  .steps > li::before { content: counter(s); width: 44px; height: 44px; border-radius: 12px; background: var(--accent); color: #fff;
+  .steps > li::before { content: counter(s); width: 44px; height: 44px; border-radius: 12px; background: var(--flow); color: #fff;
                       display: grid; place-items: center; font: 700 17px "Inter", sans-serif; }
   .steps > li > div > b { display: block; }
   .steps > li > div > span { color: var(--muted); font-size: 15px; }
@@ -192,6 +193,13 @@
   .macfix ol { margin: 0; padding-left: 20px; }
   .macfix li { margin: 5px 0; }
   .macfix .small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 8px; }
+  .lang { max-width: 760px; margin-top: 18px; }
+  .lang > p { margin: 8px 0 10px; color: var(--muted); font-size: 15px; }
+  .lang code { font: 600 13.5px ui-monospace, "Cascadia Mono", Menlo, monospace; background: var(--accent-soft); color: var(--accent);
+               padding: 1px 7px; border-radius: 6px; white-space: nowrap; }
+  .lang .codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 8px; margin-top: 12px; }
+  .lang .codes span { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px;
+                      border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
   .safe { display: flex; gap: 10px; align-items: flex-start; background: color-mix(in srgb, var(--ok) 12%, transparent);
           color: var(--text); border-radius: 10px; padding: 10px 12px; margin: 4px 0 12px; font-size: 14px; }
   .safe svg { width: 18px; height: 18px; flex: none; margin-top: 3px; color: var(--ok); }
@@ -343,7 +351,7 @@
     </div>
     <a class="trial-link" href="#trial">Install ပြီး ၅ မိနစ် အခမဲ့ စမ်းကြည့်ပါ →</a>
     <p class="note">Windows 10/11 · macOS 14+ (Apple Silicon နဲ့ Intel) · Open source</p>
-    <div class="shot"><img src="https://thecrasho.com/assets/images/projects/Crash%20Flow%20Laptop.webp?v=6" width="1672" height="941" alt="Crash Flow on a laptop: the recording pill at the top of the screen while words are typed, with the Ctrl key for Windows and the option key for Mac"></div>
+    <div class="shot"><img src="https://thecrasho.com/assets/images/projects/Crash%20Flow%20Hero.webp?v=2" width="1672" height="941" alt="Crash Flow on a laptop: the recording pill at the top of the screen while words are typed, with the Ctrl key for Windows and the option key for Mac"></div>
   </div>
 </header>
 
@@ -423,6 +431,7 @@
       <div class="card price">
         <p class="mins">30 <small>မိနစ်</small></p>
         <p class="ks">2,970 Ks</p>
+        <p class="per">တစ်မိနစ် <b>99</b> ကျပ်ပဲ</p>
         <p class="valid">သက်တမ်း ၃၀ ရက်</p>
         <a class="btn line wide" href="/buy?min=30">ဒါယူမယ်</a>
       </div>
@@ -430,12 +439,14 @@
         <span class="badge dark top plain">အကြံပြု</span>
         <p class="mins">1 <small>နာရီ</small></p>
         <p class="ks">5,940 Ks</p>
+        <p class="per">တစ်မိနစ် <b>99</b> ကျပ်ပဲ</p>
         <p class="valid">သက်တမ်း ၉၀ ရက်</p>
         <a class="btn solid wide" href="/buy?min=60">ဒါယူမယ်</a>
       </div>
       <div class="card price">
         <p class="mins">3 <small>နာရီ</small></p>
         <p class="ks">17,820 Ks</p>
+        <p class="per">တစ်မိနစ် <b>99</b> ကျပ်ပဲ</p>
         <p class="valid best-valid">သက်တမ်း ၁ နှစ် · အတန်ဆုံး</p>
         <a class="btn line wide" href="/buy?min=180">ဒါယူမယ်</a>
       </div>
@@ -472,6 +483,26 @@
       <li><div><b>🎁 အခမဲ့ စမ်း၊ ဒါမှမဟုတ် Code ထည့်ပါ</b><span>Setup မှာ <b>🎁 အခမဲ့ ၅ မိနစ် စမ်းမယ်</b> ကို နှိပ်ပါ။ Code ဝယ်ထားရင် (ဒါမှမဟုတ် ကိုယ်ပိုင် key ရှိရင်) အကွက်ထဲ Paste လုပ်ပြီး <b>စစ်ဆေးမယ်</b> နှိပ်ပါ။</span></div></li>
       <li><div><b>ညာ Ctrl ကို ဖိပြီး ပြောပါ</b><span>"မင်္ဂလာပါ" လို့ ပြောကြည့်ပါ။ စာပေါ်လာရင် အဆင်သင့်ပါပြီ။ လက်ကျန် မိနစ်ကို tray icon မှာ ကြည့်ပြီး <b>💳</b> နဲ့ ဖြည့်လို့ရပါတယ်။</span></div></li>
     </ol>
+    <details class="macfix lang" id="lang">
+      <summary><b>🌐 တခြား ဘာသာစကားနဲ့ သုံးချင်ရင်</b></summary>
+      <p>English၊ ထိုင်း၊ တရုတ်၊ ဂျပန်၊ ကိုရီးယား စတဲ့ ဘာသာစကား အများကြီးနဲ့ ပြောပြီး ရိုက်လို့ရပါတယ်။ Code နဲ့ သုံးရင်လည်း ရပြီး ဈေးနှုန်း အတူတူပါပဲ။</p>
+      <ol>
+        <li>Windows မှာ နာရီဘေးက icon ကို <b>Right-click</b>၊ Mac မှာ menu bar က icon ကို နှိပ်ပြီး <b>Settings...</b> ကို ဖွင့်ပါ</li>
+        <li><b>Language codes</b> အကွက်မှာ ပြောမယ့် ဘာသာစကားရဲ့ code ကို ထည့်ပါ။ ရောပြောရင် ကော်မာ ( , ) ခြားပြီး နှစ်ခု သုံးခု ထည့်လို့ရပါတယ်</li>
+        <li><b>Save</b> နှိပ်ပြီး hotkey ကို ဖိပြောကြည့်ပါ</li>
+      </ol>
+      <div class="codes">
+        <span><b>English</b> <code>en-US</code></span>
+        <span><b>ထိုင်း</b> <code>th-TH</code></span>
+        <span><b>တရုတ်</b> <code>zh-CN</code></span>
+        <span><b>ဂျပန်</b> <code>ja-JP</code></span>
+        <span><b>ကိုရီးယား</b> <code>ko-KR</code></span>
+        <span><b>ဟိန္ဒီ</b> <code>hi-IN</code></span>
+        <span><b>မလေး</b> <code>ms-MY</code></span>
+        <span><b>မြန်မာ (မူလ)</b> <code>my-MM, en-US</code></span>
+      </div>
+      <span class="small">ဥပမာ ထိုင်းနဲ့ English ရောပြောရင် <code>th-TH, en-US</code>။ မြန်မာလို ပြန်သုံးချင်ရင် <code>my-MM, en-US</code> ပြန်ထည့်ပါ။ English ဘာသာပြန် key (Windows: ညာ Alt · Mac: ညာ Command) ကို ဖိပြောရင် ဘယ်ဘာသာနဲ့ ပြောပြော English လို ရိုက်ပေးပါတယ်။</span>
+    </details>
   </div>
 </section>
 
@@ -497,6 +528,7 @@
       <p>App က "မိနစ် ကုန်သွားပါပြီ - ငွေဖြည့်ပါ" လို့ ပြပါမယ်။ App ထဲက <b>💳 မိနစ် ဝယ်မယ်</b> ဒါမှမဟုတ် <a href="/buy">ဒီ website</a> ကနေ ငွေဖြည့်ရင် Code အဟောင်းကိုပဲ ချက်ချင်း ဆက်သုံးလို့ရပါတယ်။ ဘာမှ ပြန်ထည့်စရာ မလိုပါ။</p></details>
     <details><summary>Burmese စာ ဘယ်လောက် မှန်လဲ</summary>
       <p>ပုံမှန်ပြောတဲ့ စကားကို အတော်လေး မှန်ပါတယ်။ နာမည်လို အမြဲမှားတဲ့ စာလုံးတွေကို "စကားလုံးနဲ့ Shortcut" မှာ တစ်ခါ ပြင်ထားရင် နောက်ပိုင်း အမြဲမှန်ပါမယ်။ Code မဝယ်ခင် အခမဲ့ ၅ မိနစ် Code နဲ့ (ဒါမှမဟုတ် ကိုယ်ပိုင် key နဲ့) စမ်းကြည့်လို့ ရပါတယ်။</p></details>
+    <details><summary>တခြား ဘာသာစကားနဲ့ သုံးလို့ရလား</summary><p>ရပါတယ်။ English၊ ထိုင်း၊ တရုတ်၊ ဂျပန်၊ ကိုရီးယား စတာတွေနဲ့ သုံးလို့ရပါတယ်။ Settings ထဲက <b>Language codes</b> ကို ပြောင်းရုံပါပဲ။ (<a href="#lang" onclick="document.getElementById('lang').open = true">လုပ်နည်း ကြည့်ရန်</a>)</p></details>
     <details><summary>ဘယ်စက်တွေမှာ သုံးလို့ရလဲ</summary>
       <p>Windows 10/11 နဲ့ macOS 14 (Sonoma) နောက်ပိုင်း Mac တွေပါ — Apple Silicon (M1–M4) ရော Intel Mac ရော ရပါတယ်။ ဖုန်းမှာတော့ မရသေးပါ။</p></details>
     <details id="safe"><summary>Install လုပ်တုန်း သတိပေးစာ ပေါ်တာ အန္တရာယ်ရှိလား</summary>
