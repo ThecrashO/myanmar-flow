@@ -4,7 +4,7 @@ it makes orders, fake receipts, fake phone notifications and fake Telegram butto
     server/.dev.vars needs GEMINI_API_KEY, ADMIN_TOKEN, PHONE_TOKEN and TELEGRAM_BOT_TOKEN
     (any made-up bot token: messages to Telegram then just fail, which the shop shrugs off).
     rm -rf .wrangler/state; npx wrangler d1 execute myanmar-flow --local --file schema.sql
-    (an empty local database: it expects 5,940 to be the first free amount)
+    (an empty local database: it expects 5,100 to be the first free amount)
     npx wrangler dev --port 8799
     .venv/Scripts/python server/tests/shop_test.py http://127.0.0.1:8799
 
@@ -154,17 +154,17 @@ check("the start link connects the owner's chat", requests.get(f"{BASE}/admin/ap
 # Orders get unique amounts.
 a = order(60)
 b = order(60)
-check("first order costs 5,940", a["amount"] == 5940, a)
-check("second open order of the same size costs 5,941", b["amount"] == 5941, b)
+check("first order costs 5,100", a["amount"] == 5100, a)
+check("second open order of the same size costs 5,101", b["amount"] == 5101, b)
 check("bad minutes refused", requests.post(f"{BASE}/mf/orders", json={"minutes": 3, "name": "x", "email": EMAIL}).status_code == 400)
 check("an order needs a name and email", requests.post(f"{BASE}/mf/orders", json={"minutes": 60, "name": "x", "email": "nope"}).json()["error"]["status"] == "mf_bad_contact")
 
 # Screenshots the buyer must redo: wrong amount, wrong receiver, not a receipt.
 txn_a = tx(1)
 r = shot(a, receipt(5000, txn_a))
-check("wrong amount is refused with the reason", r["status"] == "new" and "5,940" in (r["reason"] or ""), r)
+check("wrong amount is refused with the reason", r["status"] == "new" and "5,100" in (r["reason"] or ""), r)
 check("the order says up to 6,000 is fine", r["max_amount"] == 6000, r)
-r = shot(a, receipt(5940, txn_a, receiver="******1234"))
+r = shot(a, receipt(5100, txn_a, receiver="******1234"))
 check("wrong receiver is refused", r["status"] == "new" and "နံပါတ်" in (r["reason"] or ""), r)
 blank = io.BytesIO()
 Image.new("RGB", (600, 800), "#88aaff").save(blank, "PNG")
@@ -172,19 +172,19 @@ r = shot(a, blank.getvalue())
 check("a picture that isn't a receipt is refused", r["status"] == "new" and r["reason"], r)
 
 # A good screenshot pays at once (or, if the AI doubts the drawing, after the owner's OK).
-r = pay_through(a, receipt(5940, txn_a))
+r = pay_through(a, receipt(5100, txn_a))
 check("a good screenshot gives a code", r["status"] == "paid" and r["code"], r)
 code = r["code"]
 check("the new code has 60 minutes", seconds(code) == 3600, seconds(code))
 check("a 60-minute code lasts 90 days", days_left(code) == 90, days_left(code))
-check("a paid order ignores more screenshots", shot(a, receipt(5940, tx(9)))["code"] == code)
+check("a paid order ignores more screenshots", shot(a, receipt(5100, tx(9)))["code"] == code)
 
 # The same transaction ID can't pay a second order.
-r = shot(b, receipt(5941, txn_a))
+r = shot(b, receipt(5101, txn_a))
 check("a used transaction ID is refused", r["status"] == "new" and "သုံးပြီးသား" in (r["reason"] or ""), r)
 
 # Doubtful receipts wait for the owner: no transaction ID, or paid before the order existed.
-r = shot(b, receipt(5941, None))
+r = shot(b, receipt(5101, None))
 check("no transaction ID → review, no code", r["status"] == "review" and not r["code"], r)
 check("the buyer is told it's being checked", "စစ်ပြီး" in (r["reason"] or ""), r)
 doubts = next(o for o in requests.get(f"{BASE}/admin/api/shop", headers=ADMIN).json()["orders"] if o["id"] == b["id"])["doubts"]
@@ -257,15 +257,20 @@ r = pay_through(f, receipt(6000, tx(10)))
 check("paying up to the next 1,000 Ks gives the ordered minutes", r["status"] == "paid" and seconds(r["code"]) == 3600, (r, r.get("code") and seconds(r["code"])))
 g = order(60)
 r = shot(g, receipt(7500, tx(11)))
-check("7,500 for a 5,9xx order is refused", r["status"] == "new" and "7,500" in (r["reason"] or ""), r)
+check("7,500 for a 5,1xx order is refused", r["status"] == "new" and "7,500" in (r["reason"] or ""), r)
 seen = next(o for o in requests.get(f"{BASE}/admin/api/shop", headers=ADMIN).json()["orders"] if o["id"] == g["id"])["seen"]
 check("the owner can see what was paid", '"amount":7500' in (seen or ""), seen)
+fair = next(o for o in requests.get(f"{BASE}/admin/api/shop", headers=ADMIN).json()["orders"] if o["id"] == g["id"])["fair"]
+check("admin is told the fair minutes for 7,500 (88)", fair == 88, fair)
+page = requests.get(f"{BASE}/buy", timeout=20).text
+check("the buy page gets the price tiers from the server", "var TIERS = [[180,75],[60,85],[0,99]]" in page)
+check("a 3-hour order costs 13,500", order(180)["amount"] in (13500, 13501))
 press("paid:" + g["id"])
 s = status(g)
-check("💵 gives minutes for what was paid (75)", s["status"] == "paid" and s["minutes"] == 75 and seconds(s["code"]) == 75 * 60, s)
+check("💵 gives minutes for what was paid (88 at 85 Ks)", s["status"] == "paid" and s["minutes"] == 88 and seconds(s["code"]) == 88 * 60, s)
 h = order(60)
 r = shot(h, receipt(3000, tx(12)))
-check("3,000 for a 5,9xx order is refused", r["status"] == "new", r)
+check("3,000 for a 5,1xx order is refused", r["status"] == "new", r)
 helpme = lambda text: requests.post(f"{BASE}/mf/orders/{h['id']}/help", json={"text": text, "phone": "09 123"}, timeout=30)
 check("a message needs some text", helpme("").status_code == 400)
 r = helpme("3,000 ပဲ လွှဲမိတယ်")

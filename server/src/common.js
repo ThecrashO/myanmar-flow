@@ -32,6 +32,17 @@ export function normalizeCode(raw) {
 // Topping up restarts the clock for every minute on the code. Codes made before expiry
 // existed have no date (NULL) and never expire.
 export const TRIAL_DAYS = 7;
+
+// Ks a minute: the more minutes, the less each one costs. [from minutes, Ks a minute], biggest first.
+// The buy page gets this list from the server, so it is the only place prices are set.
+export const TIERS = [[180, 75], [60, 85], [0, 99]];
+export const rate = (minutes) => TIERS.find(([from]) => minutes >= from)[1];
+export const cost = (minutes) => minutes * rate(minutes);
+// The most minutes an amount pays for (5,100 -> 60, 7,500 -> 88).
+export const minutesFor = (paid) => Math.max(0, ...TIERS.map(([from, r]) => {
+  const m = Math.floor(paid / r);
+  return m >= from ? m : 0;
+}));
 export function validDays(minutes) {
   return minutes >= 180 ? 365 : minutes >= 60 ? 90 : 30;
 }

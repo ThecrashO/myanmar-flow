@@ -172,7 +172,7 @@ async function loadShop() {
     const act = r.insertCell();
     if (o.status !== "paid") button(act, "ငွေရပြီ", () => decide(o, "approve", ks(o.amount) + " ကို တကယ် ရထားတာ သေချာလား? Code ကို ချက်ချင်း ပေးပါမယ်။"));
     const seen = (() => { try { return o.seen ? JSON.parse(o.seen) : null; } catch (e) { return null; } })();
-    const fair = seen ? Math.floor(seen.amount / 99) : 0;
+    const fair = o.fair || 0;
     if (o.status !== "paid" && o.status !== "revoked" && fair >= 1 && seen.amount !== o.amount)
       button(act, "လွှဲသလောက် " + fair + " မိနစ်", () => decide(o, "approve-paid", ks(seen.amount) + " Ks (AI ဖတ်တာ) တကယ်ဝင်လား? " + fair + " မိနစ် ပေးပါမယ်။"));
     if (o.status === "review" || o.status === "checking") button(act, "ငြင်းမယ်", () => decide(o, "reject", ks(o.amount) + " မဝင်ဘူးလား? Code မပေးဘဲ ငြင်းပါမယ်။"), "danger");

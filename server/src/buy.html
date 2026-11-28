@@ -35,6 +35,8 @@
   .row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
   .row input { width: 120px; flex: none; }
   .total { color: var(--accent); font: 700 18px "Inter", "Noto Sans Myanmar", sans-serif; }
+  #rate b { color: var(--accent); }
+  .hint { margin: 10px 0 0; padding: 9px 12px; border-radius: 10px; background: var(--soft); font-size: 14.5px; }
   .btn { display: inline-flex; justify-content: center; align-items: center; gap: 8px; width: 100%; margin-top: 18px; padding: 13px 18px; border: 0; border-radius: 12px;
          background: var(--flow); color: #fff; font: 700 16px "Noto Sans Myanmar", sans-serif; cursor: pointer; text-decoration: none; }
   .btn:hover { filter: brightness(1.08); }
@@ -66,7 +68,7 @@
   <!-- Step 1: how many minutes -->
   <section id="choose">
     <h1>Code ဝယ်ရန်</h1>
-    <p class="muted">တစ်မိနစ် 99 ကျပ်။ KBZPay / WavePay နဲ့ ပေးပြီး screenshot ထည့်လိုက်ရင် Code ကို ဒီမှာ ချက်ချင်း ရပါမယ်။</p>
+    <p class="muted">များများယူလေ တစ်မိနစ် သက်သာလေ — 99 ကျပ်ကနေ 75 ကျပ်အထိ။ KBZPay / WavePay နဲ့ ပေးပြီး screenshot ထည့်လိုက်ရင် Code ကို ဒီမှာ ချက်ချင်း ရပါမယ်။</p>
     <div class="card">
       <h2>ဘယ်နှစ်မိနစ် ယူမလဲ</h2>
       <div class="chips" id="chips">
@@ -74,7 +76,8 @@
         <button type="button" data-m="60">1 နာရီ</button>
         <button type="button" data-m="180">3 နာရီ</button>
       </div>
-      <div class="row"><input id="minutes" type="number" min="10" max="6000" step="1" inputmode="numeric" value="60" aria-label="မိနစ်"><span>မိနစ် = <span class="total" id="total"></span> <span class="muted" id="valid"></span></span></div>
+      <div class="row"><input id="minutes" type="number" min="10" max="6000" step="1" inputmode="numeric" value="60" aria-label="မိနစ်"><span>မိနစ် = <span class="total" id="total"></span> <span class="muted" id="valid"></span><br><span class="muted" id="rate"></span></span></div>
+      <p class="hint" id="cheaper" hidden></p>
       <label class="small" for="name">နာမည်</label>
       <input id="name" type="text" autocomplete="name" placeholder="ဥပမာ Ko Aung" maxlength="80">
       <label class="small" for="email">Email <span class="muted">(Code ပျောက်ရင် ပြန်ယူဖို့)</span></label>
@@ -136,7 +139,7 @@
       <h2>ငွေ မှားလွှဲမိလား? ဆိုင်ရှင်ကို ပြောမယ်</h2>
       <p class="muted" id="helpWhy">ပမာဏ မှားလွှဲမိတာ၊ Code မရသေးတာ စတာတွေကို ရေးပို့ပါ။ ဆိုင်ရှင်က စစ်ပြီး မိနစ် ထည့်ပေးတာ ဒါမှမဟုတ် ပြန်ဆက်သွယ်ပေးပါမယ်။</p>
       <label class="small" for="helpText">ဘာဖြစ်တာလဲ</label>
-      <textarea id="helpText" rows="3" maxlength="600" placeholder="ဥပမာ 5,940 အစား 7,500 မှားလွှဲမိပါတယ်"></textarea>
+      <textarea id="helpText" rows="3" maxlength="600" placeholder="ဥပမာ 5,100 အစား 7,500 မှားလွှဲမိပါတယ်"></textarea>
       <label class="small" for="helpPhone">ဖုန်းနံပါတ် <span class="muted">(ပြန်ဆက်ဖို့၊ မထည့်လည်းရ)</span></label>
       <input id="helpPhone" type="tel" autocomplete="tel" inputmode="tel" placeholder="09 ..." maxlength="40">
       <button class="btn line" id="helpSend">ဆိုင်ရှင်ဆီ ပို့မယ်</button>
@@ -148,7 +151,10 @@
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
-  var PRICE = 99, order = null, timer = null, busy = false;
+  // [from minutes, Ks a minute], biggest first; filled in by the server.
+  var TIERS = /*TIERS*/[], order = null, timer = null, busy = false;
+  var rate = function (m) { for (var i = 0; i < TIERS.length; i++) if (m >= TIERS[i][0]) return TIERS[i][1]; return 0; };
+  var cost = function (m) { return m * rate(m); };
   var ks = function (n) { return Number(n).toLocaleString("en-US") + " Ks"; };
   // Bigger packs last longer; the server uses the same rule.
   var days = function (m) { return m >= 180 ? "၁ နှစ်" : m >= 60 ? "၉၀ ရက်" : "၃၀ ရက်"; };
@@ -162,7 +168,14 @@
   function chips() {
     var m = String(mins());
     document.querySelectorAll("#chips button").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-m") === m); });
-    $("total").textContent = mins() > 0 ? ks(mins() * PRICE) : "—";
+    var m = mins(), top = TIERS.length ? TIERS[TIERS.length - 1][1] : 0;
+    $("total").textContent = m > 0 ? ks(cost(m)) : "—";
+    $("rate").innerHTML = m > 0 ? "တစ်မိနစ် <b>" + rate(m) + "</b> ကျပ်" + (rate(m) < top ? " · " + Math.round((1 - rate(m) / top) * 100) + "% သက်သာ" : "") : "";
+    // Just short of a cheaper tier: more minutes for the same money or less.
+    var next = null;
+    TIERS.forEach(function (t) { if (t[0] > m && cost(t[0]) <= cost(m) * 1.25 && (!next || t[0] < next[0])) next = t; });
+    $("cheaper").hidden = !next || m < 10;
+    if (next) $("cheaper").innerHTML = "💡 <b>" + next[0] + " မိနစ်</b> ယူရင် " + ks(cost(next[0])) + (cost(next[0]) <= cost(m) ? " ပဲ — ပိုများပြီး ပိုသက်သာ" : " — တစ်မိနစ် " + next[1] + " ကျပ်ပဲ");
     $("valid").textContent = "· သက်တမ်း " + days(mins());
   }
   document.querySelectorAll("#chips button").forEach(function (b) {

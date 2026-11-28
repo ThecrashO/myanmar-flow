@@ -1,7 +1,8 @@
 // Selling minutes with nobody at the till.
 //
 // 1. The buyer (in the app or on /buy) picks minutes and gets an order with an exact
-//    amount to pay. Amounts are kept unique among open orders (5,940, then 5,941 ...),
+//    amount to pay (TIERS in common.js). Amounts are kept unique among open orders
+//    (5,100, then 5,101 ...),
 //    so a payment of that amount can only belong to one order.
 // 2. They pay 09 424 469 168 with KBZPay or WavePay and upload the receipt screenshot.
 //    Gemini reads it at once: a finished transfer, the right amount and receiver, a
@@ -18,13 +19,12 @@
 // Free trials: one 5-minute code per device, with per-network and per-day limits.
 
 import buyPage from "./buy.html";
-import { LATER_EXPIRY, TRIAL_DAYS, daysFromNow, fail, json, newCode, normalizeCode, validDays } from "./common.js";
+import { LATER_EXPIRY, TIERS, TRIAL_DAYS, cost, daysFromNow, fail, json, minutesFor, newCode, normalizeCode, validDays } from "./common.js";
 
 const GOOGLE = "https://generativelanguage.googleapis.com";
 const VISION_MODEL = "gemini-3.8-flash";
 const TEXT_MODEL = "gemini-3.5-flash-lite";
 
-export const PRICE = 99;                 // Ks a minute
 const PAY_TO = "09 424 469 168";
 const PAY_TAIL = "9168";                 // receipts often mask the number: ******9168
 const MIN_MINUTES = 10, MAX_MINUTES = 6000;
@@ -50,7 +50,7 @@ const DAY = 86_400_000;
 const ks = (n) => Number(n).toLocaleString("en-US");
 const digits = (s) => String(s || "").replace(/\D/g, "");
 const cleanTxn = (s) => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "") || null;
-// A payment is fine from the exact amount up to the next 1,000 Ks (5,940 -> 5,940 to 6,000).
+// A payment is fine from the exact amount up to the next 1,000 Ks (5,100 -> 5,100 to 6,000).
 const upTo = (amount) => Math.ceil(amount / 1000) * 1000;
 const amountOk = (paid, order) => paid >= order.amount && paid <= upTo(order.amount);
 const range = (order) => upTo(order.amount) > order.amount ? `${ks(order.amount)} – ${ks(upTo(order.amount))} Ks` : `${ks(order.amount)} Ks`;
@@ -60,7 +60,7 @@ const seenOf = (order) => { try { return order.seen ? JSON.parse(order.seen) : n
 // Routes anyone can call. Returns null when the path isn't the shop's.
 export async function shop(request, env, url) {
   const p = url.pathname, post = request.method === "POST";
-  if (p === "/buy") return new Response(buyPage, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" } });
+  if (p === "/buy") return new Response(buyPage.replace("/*TIERS*/[]", JSON.stringify(TIERS)), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" } });
   if (p === "/mf/orders" && post) return await createOrder(request, env, url);
   let m = p.match(/^\/mf\/orders\/([a-z0-9]{16})$/);
   if (m && request.method === "GET") return await showOrder(env, url, m[1]);
@@ -130,7 +130,7 @@ async function createOrder(request, env, url) {
   // The exact amount to pay, unique among orders that could still be paid.
   const { results } = await env.DB.prepare("SELECT amount FROM orders WHERE status != 'paid' AND created_at > ?").bind(ago(ORDER_DAYS * DAY)).all();
   const taken = new Set(results.map((r) => r.amount));
-  let amount = minutes * PRICE;
+  let amount = cost(minutes);
   while (taken.has(amount)) amount++;
 
   const order = { id: randomId(), minutes, amount, topup, status: "new", created_at: new Date().toISOString() };
@@ -299,7 +299,7 @@ async function screenshot(request, env, url, id) {
     } else if (receipt.is_transfer_receipt) {
       // A real-looking receipt the AI turned down: the owner sees it, in case the AI misread it.
       const buttons = [["✅ " + ks(order.amount) + " Ks ရပြီ — " + order.minutes + " မိနစ် ပေးမယ်", "ok:" + id]];
-      const fair = Math.floor(paid / PRICE);
+      const fair = minutesFor(paid);
       if (wrongAmount && fair >= 1) buttons.push(["💵 လွှဲထားတဲ့ " + ks(paid) + " Ks အတွက် " + fair + " မိနစ် ပေးမယ်", "paid:" + id]);
       await tell(env, `⚠️ AI က လက်မခံ — ${ks(order.amount)} Ks\n${orderLine(order)}\nAI ဖတ်တာ: ${ks(receipt.amount || 0)} Ks · ` +
                       `${receipt.receiver_phone || "နံပါတ် မပါ"} · Txn ${txn || "—"}\nဝယ်သူကို ပြောထားတာ: ${problem}\n\n` +
@@ -347,7 +347,7 @@ async function help(request, env, id) {
   if (!text) return fail(400, "mf_bad_help", "Write what happened");
   const took = await env.DB.prepare("UPDATE orders SET help_sent = help_sent + 1 WHERE id = ? AND help_sent < ?").bind(id, HELP_MESSAGES).run();
   if (!took.meta.changes) return fail(429, "mf_too_many", "Already sent");
-  const seen = seenOf(order), fair = seen ? Math.floor(seen.amount / PRICE) : 0;
+  const seen = seenOf(order), fair = seen ? minutesFor(seen.amount) : 0;
   const buttons = [];
   if (order.status !== "paid" && order.status !== "revoked") buttons.push(["✅ " + ks(order.amount) + " Ks ရပြီ — " + order.minutes + " မိနစ် ပေးမယ်", "ok:" + id]);
   if (order.status !== "paid" && order.status !== "revoked" && fair >= 1 && seen.amount !== order.amount) {
@@ -478,7 +478,7 @@ async function decide(env, action, id) {
   if (action === "paid") {
     // Minutes for what the buyer actually paid (the amount the AI read off their receipt).
     if (order.status === "paid") return `${tag} က ပေးပြီးသားပါ (${order.code})`;
-    const seen = seenOf(order), minutes = seen ? Math.floor(seen.amount / PRICE) : 0;
+    const seen = seenOf(order), minutes = seen ? minutesFor(seen.amount) : 0;
     if (!minutes) return `${tag} မှာ လွှဲထားတဲ့ ပမာဏ မသိပါ`;
     if (seen.txn && await env.DB.prepare("SELECT 1 FROM orders WHERE txn = ? AND id != ?").bind(seen.txn, id).first()) {
       return `Txn ${seen.txn} ကို တခြား order မှာ သုံးပြီးသား — မပေးပါ (${tag})`;
@@ -671,7 +671,9 @@ export async function shopAdmin(request, env, url, parts) {
       "SELECT id, at, wallet, amount, txn, sender, raw, order_id FROM payments ORDER BY id DESC LIMIT 60",
     ).all();
     return json({
-      orders: orders.results, payments: payments.results,
+      // fair: the minutes the amount the AI read off the receipt pays for.
+      orders: orders.results.map((o) => { const seen = seenOf(o); return { ...o, fair: seen ? minutesFor(seen.amount) : 0 }; }),
+      payments: payments.results,
       phone_url: env.PHONE_TOKEN ? `${url.origin}/mf/pay-inbox/${env.PHONE_TOKEN}` : null,
       telegram: { bot: !!env.TELEGRAM_BOT_TOKEN, linked: !!(await setting(env, "tg_chat")) },
     });
