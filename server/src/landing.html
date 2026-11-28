@@ -7,23 +7,24 @@
 <meta name="description" content="Key တစ်ချက်ဖိပြီး မြန်မာလို ပြောလိုက်ရုံနဲ့ ဘယ် app မှာမဆို စာဝင်တဲ့ Windows နဲ့ Mac app။ ကိုယ်ပိုင် key နဲ့ အခမဲ့၊ ဒါမှမဟုတ် VPN မလိုတဲ့ Code နဲ့ မိနစ်ဝယ်သုံး။">
 <meta property="og:title" content="Crash Flow — Burmese voice typing for Windows and Mac">
 <meta property="og:description" content="Key တစ်ချက်ဖိ၊ မြန်မာလို ပြော၊ လွှတ် — ဘယ် app မှာမဆို စာဝင်ပါပြီ။">
-<meta property="og:image" content="https://thecrasho.com/assets/images/projects/Myanmar%20Flow%20Laptop.png">
+<meta property="og:image" content="https://thecrasho.com/assets/images/projects/Crash%20Flow%20Laptop.png?v=6">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#071233">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Crect x='24' y='12' width='16' height='26' rx='8' fill='white'/%3E%3Cpath d='M17 31a15 15 0 0 0 30 0M32 46v8M24 54h16' stroke='white' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#0b0d1f">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2322d3ee'/%3E%3Cstop offset='1' stop-color='%23a855f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Crect x='24' y='12' width='16' height='26' rx='8' fill='white'/%3E%3Cpath d='M17 31a15 15 0 0 0 30 0M32 46v8M24 54h16' stroke='white' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Quicksand:wght@600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --hero: #071233; --hero-2: #0b1d52; --accent: #2f6bff; --accent-2: #5ec8ff; --accent-soft: #e8efff;
+    --hero: #0b0d1f; --hero-2: #1a1640; --accent: #6d5cff; --accent-2: #22d3ee; --violet: #a855f7; --accent-soft: #efecff;
+    --flow: linear-gradient(90deg, #22d3ee, #6d7cff 55%, #a855f7);
     --bg: #ffffff; --tint: #f3f6ff; --card: #ffffff; --text: #0e1630; --muted: #5a6480; --line: #e3e8f4;
     --ok: #0f9d58; --warn: #b45309; --warn-bg: #fff7e8;
     --radius: 18px; --shadow: 0 1px 2px rgba(14,22,48,.05), 0 8px 24px rgba(14,22,48,.06);
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #0a0f1f; --tint: #0e1529; --card: #131b33; --text: #e9edf8; --muted: #9aa5c4; --line: #222c48;
-            --accent-soft: #16244d; --warn: #fbbf24; --warn-bg: #2a2110; --shadow: 0 1px 2px rgba(0,0,0,.3); }
+            --accent-soft: #1f1b44; --accent: #8b7dff; --warn: #fbbf24; --warn-bg: #2a2110; --shadow: 0 1px 2px rgba(0,0,0,.3); }
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -42,7 +43,7 @@
   /* nav */
   /* A bar that stays at the top; it turns solid once the page scrolls. */
   nav { position: fixed; inset: 0 0 auto; z-index: 50; transition: background .2s, box-shadow .2s; }
-  nav.solid, nav.open { background: rgba(7, 18, 51, .94); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  nav.solid, nav.open { background: rgba(11, 13, 31, .94); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
                         box-shadow: 0 1px 0 rgba(255, 255, 255, .08); }
   nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 64px; }
   [id] { scroll-margin-top: 72px; }
@@ -50,44 +51,48 @@
           border-radius: 10px; cursor: pointer; align-items: center; justify-content: center; flex: none; }
   .menu svg { width: 22px; height: 22px; }
   .navend { display: flex; align-items: center; gap: 10px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #fff; text-decoration: none; font-size: 17px; }
+  .brand { display: flex; align-items: center; gap: 10px; font: 700 19px "Quicksand", "Inter", sans-serif; color: #fff; text-decoration: none; }
+  .brand b, .flowtext { background: var(--flow); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .brand svg { width: 32px; height: 32px; }
   .navlinks { display: flex; gap: 26px; align-items: center; }
   .navlinks a { color: #c9d4f5; text-decoration: none; font-size: 14px; font-weight: 600; }
   .navlinks a:hover { color: #fff; }
-  .navlinks a.pill { background: #fff; color: var(--hero); padding: 8px 16px; border-radius: 10px; }
-  .navlinks a.pill:hover, .navlinks a.pill:active { background: #dbe6ff; color: var(--hero); }
+  .navlinks a.pill { background: var(--flow); color: #fff; padding: 8px 16px; border-radius: 10px; }
+  .navlinks a.pill:hover, .navlinks a.pill:active { filter: brightness(1.1); color: #fff; }
   @media (max-width: 760px) {
     .menu { display: inline-flex; }
     .navlinks a:not(.pill) { display: none; }
     /* ☰ opens the links as a panel under the bar. */
     nav.open .navlinks { position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0;
-                         padding: 4px 16px 18px; background: rgba(7, 18, 51, .97); box-shadow: 0 12px 24px rgba(0, 0, 0, .3); }
+                         padding: 4px 16px 18px; background: rgba(11, 13, 31, .97); box-shadow: 0 12px 24px rgba(0, 0, 0, .3); }
     nav.open .navlinks a:not(.pill) { display: block; padding: 15px 2px; font-size: 16px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
     nav.open .navlinks a.pill { margin-top: 14px; text-align: center; padding: 12px; }
   }
 
   /* hero */
   .hero { position: relative; overflow: hidden; color: #fff; padding: 140px 0 0;
-          background: radial-gradient(1200px 600px at 75% 10%, #1b3fa8 0%, transparent 60%), linear-gradient(160deg, var(--hero) 0%, var(--hero-2) 100%); }
+          background: radial-gradient(900px 520px at 80% 8%, rgba(168, 85, 247, .38) 0%, transparent 60%),
+                      radial-gradient(800px 480px at 12% 30%, rgba(34, 211, 238, .22) 0%, transparent 60%),
+                      linear-gradient(160deg, var(--hero) 0%, var(--hero-2) 100%); }
+  .hero .tagline { font: 700 clamp(15px, 2vw, 18px) "Quicksand", "Inter", sans-serif; letter-spacing: .02em; color: #e9e6ff; margin: 0 0 14px; }
   .hero .lines { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; pointer-events: none; }
   .hero .wrap { position: relative; text-align: center; }
   .hero h1 { font-size: clamp(32px, 6vw, 60px); font-weight: 800; line-height: 1.35; max-width: 900px; margin: 0 auto; }
-  .hero h1 em { background: linear-gradient(90deg, var(--accent-2), #8fb0ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero h1 em { background: var(--flow); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hero p.sub { color: #c3cdec; font-size: clamp(16px, 2.2vw, 19px); max-width: 640px; margin: 18px auto 32px; }
   .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
   .btn { display: inline-flex; align-items: center; gap: 9px; padding: 13px 22px; border-radius: 12px; font-weight: 700;
          font-size: 15px; text-decoration: none; border: 1.5px solid transparent; cursor: pointer; font-family: inherit; line-height: 1.4; }
   .btn svg { width: 18px; height: 18px; flex: none; }
-  .btn.solid { background: var(--accent); color: #fff; }
-  .btn.solid:hover { background: #1f58e8; }
+  .btn.solid { background: var(--flow); color: #fff; box-shadow: 0 8px 24px rgba(109, 92, 255, .35); }
+  .btn.solid:hover { filter: brightness(1.08); }
   .btn.ghost { border-color: rgba(255,255,255,.45); color: #fff; }
   .btn.ghost:hover { background: rgba(255,255,255,.08); }
   .btn.line { border-color: var(--line); color: var(--text); background: var(--card); }
   .btn.line:hover { border-color: var(--accent); }
   .hero .note { color: #93a2cf; font-size: 13px; margin-top: 14px; }
   .shot { margin: 56px auto 0; max-width: 960px; border-radius: 20px 20px 0 0; overflow: hidden;
-          box-shadow: 0 -10px 60px rgba(47,107,255,.35); border: 1px solid rgba(255,255,255,.12); border-bottom: 0; }
+          box-shadow: 0 -10px 70px rgba(124, 92, 255, .4); border: 1px solid rgba(255,255,255,.12); border-bottom: 0; }
   .shot img { display: block; width: 100%; height: auto; }
 
   /* cards */
@@ -107,7 +112,7 @@
   @media (max-width: 860px) { .split { grid-template-columns: 1fr; gap: 32px; } }
   .checks { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 18px; }
   .checks li { display: grid; grid-template-columns: 34px 1fr; gap: 14px; }
-  .checks .tick { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; }
+  .checks .tick { width: 34px; height: 34px; border-radius: 50%; background: var(--flow); color: #fff; display: grid; place-items: center; }
   .checks .tick svg { width: 18px; height: 18px; }
   .checks b { display: block; }
   .checks span { color: var(--muted); font-size: 15px; }
@@ -120,7 +125,7 @@
   /* compare */
   .badge { display: inline-block; font: 700 11px "Inter", sans-serif; letter-spacing: .08em; text-transform: uppercase;
            padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
-  .badge.dark { background: var(--accent); color: #fff; }
+  .badge.dark { background: var(--flow); color: #fff; }
   .way ul { margin: 16px 0 0; padding-left: 20px; color: var(--muted); }
   .way li { margin: 4px 0; }
   .way.featured { border: 2px solid var(--accent); }
@@ -134,7 +139,7 @@
   .price .ks { font: 700 22px "Inter", "Noto Sans Myanmar", sans-serif; color: var(--accent); margin-top: 8px; }
   .price .per { color: var(--muted); font-size: 14px; }
   .price .valid { display: inline-block; margin: 8px 0 4px; padding: 2px 10px; border-radius: 999px; background: var(--tint); color: var(--text); font-size: 13.5px; font-weight: 600; }
-  .price .valid.best-valid { background: var(--accent); color: #fff; }
+  .price .valid.best-valid { background: var(--flow); color: #fff; }
   .price.best { border: 2px solid var(--accent); }
   .price .top { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
   .card.price .mins { color: var(--text); }
@@ -293,8 +298,8 @@
 <nav>
   <div class="wrap">
     <a class="brand" href="#top" aria-label="Crash Flow">
-      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#2f6bff"/><rect x="24" y="12" width="16" height="26" rx="8" fill="#fff"/><path d="M17 31a15 15 0 0 0 30 0M32 46v8M24 54h16" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></svg>
-      <span>Crash Flow</span>
+      <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="cf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#cf)"/><rect x="24" y="12" width="16" height="26" rx="8" fill="#fff"/><path d="M17 31a15 15 0 0 0 30 0M32 46v8M24 54h16" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></svg>
+      <span>Crash <b>Flow</b></span>
     </a>
     <div class="navend">
       <div class="navlinks" id="navlinks">
@@ -313,7 +318,7 @@
 
 <header class="hero" id="top">
   <svg class="lines" viewBox="0 0 1440 700" preserveAspectRatio="none" aria-hidden="true">
-    <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#5ec8ff" stop-opacity="0"/><stop offset=".5" stop-color="#5ec8ff"/><stop offset="1" stop-color="#2f6bff" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#22d3ee" stop-opacity="0"/><stop offset=".45" stop-color="#22d3ee"/><stop offset=".75" stop-color="#a855f7"/><stop offset="1" stop-color="#a855f7" stop-opacity="0"/></linearGradient></defs>
     <g fill="none" stroke="url(#g)" stroke-width="1.2">
       <path d="M0 520 C 240 420, 420 640, 720 520 S 1200 380, 1440 470"/>
       <path d="M0 540 C 260 440, 440 650, 720 540 S 1180 400, 1440 490" opacity=".7"/>
@@ -323,6 +328,7 @@
     </g>
   </svg>
   <div class="wrap">
+    <p class="tagline">Speak any language. <span class="flowtext">Type anywhere.</span></p>
     <h1>မြန်မာလို ပြောလိုက်ရုံနဲ့<br><em>စာဖြစ်သွားမယ်</em></h1>
     <p class="sub">Key တစ်ချက်ဖိ၊ ပြော၊ လွှတ် — Facebook၊ Messenger၊ Viber၊ Gmail၊ Word ဘယ် app မှာမဆို စာက ချက်ချင်း ဝင်လာပါပြီ။ Windows နဲ့ Mac နှစ်မျိုးလုံး ရပါတယ်။</p>
     <div class="btns">
@@ -337,7 +343,7 @@
     </div>
     <a class="trial-link" href="#trial">Install ပြီး ၅ မိနစ် အခမဲ့ စမ်းကြည့်ပါ →</a>
     <p class="note">Windows 10/11 · macOS 14+ (Apple Silicon နဲ့ Intel) · Open source</p>
-    <div class="shot"><img src="https://thecrasho.com/assets/images/projects/Myanmar%20Flow%20Laptop.webp" width="1672" height="941" alt="Crash Flow, voice typing for Windows and Mac laptops: a laptop with a recording pill on screen, a Ctrl key, microphone and voice-to-text panels"></div>
+    <div class="shot"><img src="https://thecrasho.com/assets/images/projects/Crash%20Flow%20Laptop.webp?v=6" width="1672" height="941" alt="Crash Flow on a laptop: the recording pill at the top of the screen while words are typed, with the Ctrl key for Windows and the option key for Mac"></div>
   </div>
 </header>
 
@@ -504,7 +510,7 @@
     <p class="lead" style="margin:12px auto 26px">မိနစ် ရွေး → KBZPay / WavePay နဲ့ ပေး → screenshot ထည့်ရင် Code ရပါပြီ။ ၂၄ နာရီ ဝယ်လို့ရပါတယ်။</p>
     <a class="btn solid" href="/buy">Code ဝယ်မယ် →</a>
     <p class="lead" style="margin-top:26px;font-size:15px">မေးချင်တာ ရှိရင် <a href="tel:+959424469168" style="color:#fff">09 424 469 168</a> (ဖုန်း / Viber) ·
-      <a href="mailto:thecrashoai@gmail.com?subject=Myanmar%20Flow" style="color:#fff">thecrashoai@gmail.com</a></p>
+      <a href="mailto:thecrashoai@gmail.com?subject=Crash%20Flow" style="color:#fff">thecrashoai@gmail.com</a></p>
   </div>
 </section>
 

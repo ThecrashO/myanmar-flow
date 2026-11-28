@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crash Flow Code ဝယ်ရန်</title>
 <meta name="description" content="Crash Flow Code ကို KBZPay / WavePay နဲ့ ဝယ်ပြီး ချက်ချင်း ရယူပါ။ တစ်မိနစ် 99 ကျပ်။">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f6bff'/%3E%3Cpath d='M9 22V10l7 7 7-7v12' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2322d3ee'/%3E%3Cstop offset='1' stop-color='%23a855f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Crect x='24' y='12' width='16' height='26' rx='8' fill='white'/%3E%3Cpath d='M17 31a15 15 0 0 0 30 0M32 46v8M24 54h16' stroke='white' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&family=Noto+Sans+Myanmar:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f3f6ff; --card:#fff; --text:#0e1630; --muted:#5a6480; --line:#e3e8f4; --accent:#2f6bff; --soft:#e8efff;
-          --ok:#0f9d58; --ok-bg:#e9f8ef; --bad:#c2410c; --bad-bg:#fff3ea; --hero:#071233; }
+  :root { --bg:#f3f6ff; --card:#fff; --text:#0e1630; --muted:#5a6480; --line:#e3e8f4; --accent:#6d5cff; --soft:#efecff; --flow:linear-gradient(90deg,#22d3ee,#6d7cff 55%,#a855f7);
+          --ok:#0f9d58; --ok-bg:#e9f8ef; --bad:#c2410c; --bad-bg:#fff3ea; --hero:#0b0d1f; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#0a0f1f; --card:#131b33; --text:#e9edf8; --muted:#9aa5c4; --line:#222c48; --soft:#16244d;
+    :root { --bg:#0a0f1f; --card:#131b33; --text:#e9edf8; --muted:#9aa5c4; --line:#222c48; --soft:#1f1b44; --accent:#8b7dff;
             --ok:#4ade80; --ok-bg:#0f2a1b; --bad:#fb923c; --bad-bg:#2a1a0e; }
   }
   * { box-sizing: border-box; }
@@ -26,7 +26,7 @@
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 18px; margin-top: 18px; }
   .card h2 { font-size: 17px; margin: 0 0 10px; }
   label.small { display: block; font-weight: 600; font-size: 14px; margin: 16px 0 6px; }
-  input[type=number], input[type=text], input[type=tel], textarea { width: 100%; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  input[type=number], input[type=text], input[type=tel], input[type=email], textarea { width: 100%; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
   textarea { display: block; resize: vertical; }
   input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -36,8 +36,8 @@
   .row input { width: 120px; flex: none; }
   .total { color: var(--accent); font: 700 18px "Inter", "Noto Sans Myanmar", sans-serif; }
   .btn { display: inline-flex; justify-content: center; align-items: center; gap: 8px; width: 100%; margin-top: 18px; padding: 13px 18px; border: 0; border-radius: 12px;
-         background: var(--accent); color: #fff; font: 700 16px "Noto Sans Myanmar", sans-serif; cursor: pointer; text-decoration: none; }
-  .btn:hover { background: #1f58e8; }
+         background: var(--flow); color: #fff; font: 700 16px "Noto Sans Myanmar", sans-serif; cursor: pointer; text-decoration: none; }
+  .btn:hover { filter: brightness(1.08); }
   .btn[disabled] { opacity: .55; cursor: wait; }
   .btn.line { background: transparent; color: var(--accent); border: 1px solid var(--line); }
   .amount { font: 800 40px/1.2 "Inter", sans-serif; margin: 4px 0; }
@@ -61,7 +61,7 @@
 </style>
 </head>
 <body>
-<header><a href="/"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2f6bff"/><path d="M9 22V10l7 7 7-7v12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>Crash Flow</a></header>
+<header><a href="/"><svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="cf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#cf)"/><rect x="24" y="12" width="16" height="26" rx="8" fill="#fff"/><path d="M17 31a15 15 0 0 0 30 0M32 46v8M24 54h16" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></svg>Crash Flow</a></header>
 <main>
   <!-- Step 1: how many minutes -->
   <section id="choose">
