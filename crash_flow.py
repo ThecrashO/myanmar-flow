@@ -777,8 +777,11 @@ HAS_RAQM = features.check("raqm")  # complex-script shaping, needed to draw Burm
 CAN_SHAPE = HAS_RAQM or hasattr(plat, "render_text")
 SUPERSAMPLE = 3
 BARS = 21
-PILL_BG = (20, 20, 23)
-PILL_BORDER = (58, 58, 64)
+# Crash Flow look: a navy glass pill with a cyan-to-violet edge and glow.
+PILL_BG = (13, 15, 30)
+PILL_BORDER = (52, 56, 92)
+CYAN = (34, 211, 238)
+VIOLET = (168, 85, 247)
 WHITE = (245, 245, 247)
 MUTED = (150, 150, 158)
 DIM = (92, 92, 100)
@@ -791,6 +794,30 @@ GREEN = (34, 160, 107)
 def mix(fg, bg, t):
     """Blend fg over bg by t (ImageDraw overwrites alpha instead of blending)."""
     return tuple(int(b + (f - b) * t) for f, b in zip(fg, bg)) + (255,)
+
+
+def flow(t):
+    """The brand gradient at t (0 = cyan, 1 = violet)."""
+    return mix(VIOLET, CYAN, max(0.0, min(1.0, t)))
+
+
+def gradient(size):
+    """A cyan-to-violet left-to-right gradient image."""
+    w, h = max(1, int(size[0])), max(1, int(size[1]))
+    row = Image.new("RGBA", (w, 1))
+    row.putdata([flow(x / max(1, w - 1)) for x in range(w)])
+    return row.resize((w, h))
+
+
+def glass(img, box, radius, k, fill=PILL_BG, edge=1.4):
+    """A rounded panel with a gradient edge, drawn into img."""
+    x0, y0, x1, y1 = (int(v) for v in box)
+    ring = Image.new("L", (x1 - x0, y1 - y0), 0)
+    d = ImageDraw.Draw(ring)
+    d.rounded_rectangle((0, 0, x1 - x0 - 1, y1 - y0 - 1), radius=radius, fill=255)
+    img.paste(gradient((x1 - x0, y1 - y0)), (x0, y0), ring)
+    e = edge * k
+    ImageDraw.Draw(img).rounded_rectangle((x0 + e, y0 + e, x1 - 1 - e, y1 - 1 - e), radius=max(1, radius - e), fill=fill + (255,))
 
 
 class Indicator:
@@ -931,13 +958,16 @@ class Indicator:
             m, h = self.MARGIN, self.H
             size = (int((w + 2 * m) * k), int((h + 2 * m) * k))
             img = Image.new("RGBA", size, (0, 0, 0, 0))
-            ImageDraw.Draw(img).rounded_rectangle((m * k, (m + 4) * k, (m + w) * k, (m + h + 4) * k),
-                                                  radius=h / 2 * k, fill=(0, 0, 0, 120))
-            img = img.filter(ImageFilter.GaussianBlur(7 * k))
-            d = ImageDraw.Draw(img)
-            d.rounded_rectangle((m * k, m * k, (m + w) * k, (m + h) * k), radius=h / 2 * k, fill=PILL_BORDER + (255,))
-            d.rounded_rectangle(((m + 1) * k, (m + 1) * k, (m + w - 1) * k, (m + h - 1) * k),
-                                radius=(h / 2 - 1) * k, fill=PILL_BG + (255,))
+            # A soft cyan-to-violet glow with a little dark shadow under it.
+            glow = Image.new("L", size, 0)
+            ImageDraw.Draw(glow).rounded_rectangle((m * k, (m + 2) * k, (m + w) * k, (m + h + 2) * k), radius=h / 2 * k, fill=95)
+            glow = glow.filter(ImageFilter.GaussianBlur(6 * k))
+            img.paste(gradient(size), (0, 0), glow)
+            shadow = Image.new("RGBA", size, (0, 0, 0, 0))
+            ImageDraw.Draw(shadow).rounded_rectangle((m * k, (m + 4) * k, (m + w) * k, (m + h + 4) * k),
+                                                     radius=h / 2 * k, fill=(0, 0, 0, 90))
+            img.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(4 * k)))
+            glass(img, (m * k, m * k, (m + w) * k, (m + h) * k), h / 2 * k, k)
             self.bases[key] = img
         return self.bases[key]
 
@@ -951,10 +981,12 @@ class Indicator:
         def at(x):
             return ox + x * k
 
-        def bars(heights, color):
+        def bars(heights, color=None):
+            """The waveform; without a colour, each bar takes its place in the brand gradient."""
             for i, h in enumerate(heights):
                 x = 36 + i * 6
-                d.rounded_rectangle((at(x), cy - h / 2 * k, at(x + 3), cy + h / 2 * k), radius=1.5 * k, fill=color)
+                c = color or flow(i / (BARS - 1))
+                d.rounded_rectangle((at(x), cy - h / 2 * k, at(x + 3), cy + h / 2 * k), radius=1.5 * k, fill=c)
 
         t = now - self.started
         if self.mode == "recording":
@@ -967,14 +999,15 @@ class Indicator:
             else:
                 pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.cos(t * 5))
                 d.ellipse((at(20 - 5), cy - 5 * k, at(20 + 5), cy + 5 * k), fill=mix(accent, PILL_BG, pulse))
-            bars([3 + lvl * 21 for lvl in self.levels], WHITE + (255,))
+            bars([3 + lvl * 21 for lvl in self.levels])
             d.text((at(w - 18), cy), f"{int(t) // 60}:{int(t) % 60:02d}",
                    font=self.font("segoeui.ttf", 12, k), fill=MUTED + (255,), anchor="rm")
         elif self.mode == "transcribing":
             start = (t * 400) % 360
             d.arc((at(20 - 7), cy - 7 * k, at(20 + 7), cy + 7 * k), start, start + 260,
-                  fill=ORANGE + (255,), width=max(1, int(2.2 * k)))
-            bars([3 + 7 * (0.5 + 0.5 * math.sin(t * 7 - i * 0.45)) for i in range(BARS)], DIM + (255,))
+                  fill=VIOLET + (255,), width=max(1, int(2.2 * k)))
+            bars([3 + 7 * (0.5 + 0.5 * math.sin(t * 7 - i * 0.45)) for i in range(BARS)],
+                 mix(CYAN, PILL_BG, 0.55))
         elif self.mode == "done":
             d.ellipse((at(20 - 8), cy - 8 * k, at(20 + 8), cy + 8 * k), fill=GREEN + (255,))
             d.line([(at(16), cy), (at(19), cy + 3 * k), (at(24.5), cy - 3.5 * k)],
@@ -1015,8 +1048,7 @@ class Indicator:
         img = Image.new("RGBA", (int((w + 4) * k), int((h + 6) * k)), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         d.rounded_rectangle((2 * k, 4 * k, (w + 2) * k, (h + 4) * k), radius=12 * k, fill=(0, 0, 0, 70))
-        d.rounded_rectangle((2 * k, 2 * k, (w + 2) * k, (h + 2) * k), radius=12 * k, fill=PILL_BORDER + (255,))
-        d.rounded_rectangle((3 * k, 3 * k, (w + 1) * k, (h + 1) * k), radius=11 * k, fill=(30, 30, 34, 255))
+        glass(img, (2 * k, 2 * k, (w + 2) * k, (h + 2) * k), 12 * k, k, fill=(20, 22, 42), edge=1)
         self.put_text(img, 20 * k, (2 + h / 2) * k, text, 14, k)
         self.bubble_cache = ((self.live_text, k), img)
         return img
