@@ -23,9 +23,9 @@ const BATCH_MODELS = ["gemini-3.5-transcribe"];
 const TEXT_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
 const TEXT_CALL_MS = 5000;          // a clean-up or translation costs 5 seconds
 const MAX_SESSION_MS = 310_000;     // the app stops recording at 300 s
-const GRACE_MS = 30_000;            // let the last sentence finish when minutes run out
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 const MAX_TEXT_BYTES = 64 * 1024;
+const MAX_LIVE_FRAME = 64 * 1024;
 
 export default {
   async fetch(request, env, ctx) {
@@ -38,9 +38,9 @@ export default {
       if (url.pathname === "/mf/balance") return await balance(request, env);
       if (url.pathname === "/mf/where") return await where(request, env);
       if (url.pathname === LIVE_PATH) return await live(request, env, ctx);
-      if (url.pathname === "/v1beta/interactions" && request.method === "POST") return await batch(request, env, ctx);
+      if (url.pathname === "/v1beta/interactions" && request.method === "POST") return await batch(request, env);
       const m = url.pathname.match(/^\/v1beta\/models\/([\w.-]+):generateContent$/);
-      if (m && request.method === "POST") return await generate(request, env, ctx, m[1]);
+      if (m && request.method === "POST") return await generate(request, env, m[1]);
       const sold = await shop(request, env, url);
       if (sold) return sold;
       return fail(404, "mf_not_found", "Not found");
@@ -63,14 +63,25 @@ async function account(request, env) {
   return { row };
 }
 
-async function charge(env, code, ms, kind) {
-  ms = Math.max(0, Math.round(ms));
-  if (!ms) return;
+export async function reserve(env, code, ms) {
+  const now = new Date().toISOString();
+  const result = await env.DB.prepare(
+    "UPDATE codes SET balance_ms = balance_ms - ?1 WHERE code = ?2 AND balance_ms >= ?1 AND disabled = 0 AND (expires_at IS NULL OR expires_at >= ?3)",
+  ).bind(ms, code, now).run();
+  return result.meta.changes === 1;
+}
+
+async function settle(env, code, reserved, used, kind) {
+  used = Math.min(reserved, Math.max(0, Math.ceil(used)));
+  if (!used) {
+    await env.DB.prepare("UPDATE codes SET balance_ms = balance_ms + ? WHERE code = ?").bind(reserved, code).run();
+    return;
+  }
   const now = new Date().toISOString();
   await env.DB.batch([
-    env.DB.prepare("UPDATE codes SET balance_ms = balance_ms - ?1, used_ms = used_ms + ?1, last_used_at = ?2 WHERE code = ?3")
-      .bind(ms, now, code),
-    env.DB.prepare("INSERT INTO ledger (code, at, kind, ms) VALUES (?1, ?2, ?3, ?4)").bind(code, now, kind, -ms),
+    env.DB.prepare("UPDATE codes SET balance_ms = balance_ms + ?, used_ms = used_ms + ?, last_used_at = ? WHERE code = ?")
+      .bind(reserved - used, used, now, code),
+    env.DB.prepare("INSERT INTO ledger (code, at, kind, ms) VALUES (?1, ?2, ?3, ?4)").bind(code, now, kind, -used),
   ]);
 }
 
@@ -130,43 +141,107 @@ async function forward(path, body, env) {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60_000),
   });
   return new Response(resp.body, { status: resp.status, headers: { "content-type": resp.headers.get("content-type") || "application/json" } });
 }
 
+async function meteredForward(path, body, env, code, ms, kind) {
+  if (!(await reserve(env, code, ms))) return noMinutes();
+  let used = 0;
+  try {
+    const response = await forward(path, body, env);
+    if (response.ok) used = ms;
+    return response;
+  } finally {
+    await settle(env, code, ms, used, kind);
+  }
+}
+
+async function boundedJson(request, maxBytes) {
+  if (!request.body || Number(request.headers.get("content-length")) > maxBytes) return null;
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let size = 0, raw = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) return JSON.parse(raw + decoder.decode());
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      raw += decoder.decode(value, { stream: true });
+    }
+  } catch {
+    return null;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function stringList(value, count, length) {
+  return Array.isArray(value)
+    ? value.filter((item) => typeof item === "string" && item.length <= length).slice(0, count)
+    : [];
+}
+
+function audioData(data, limit) {
+  return typeof data === "string" && data.length > 0 && data.length % 4 === 0
+    && base64Bytes(data) <= limit && /^[A-Za-z0-9+/]+={0,2}$/.test(data);
+}
+
 // Batch speech-to-text (the app's fallback when Live fails).
-async function batch(request, env, ctx) {
+async function batch(request, env) {
   const { row, err } = await account(request, env);
   if (err) return err;
   if (row.balance_ms <= 0) return noMinutes();
   if (Number(request.headers.get("content-length") || 0) > MAX_AUDIO_BYTES * 1.4) return fail(413, "mf_too_big", "Audio too long");
-  const body = await request.json();
+  const body = await boundedJson(request, Math.ceil(MAX_AUDIO_BYTES * 1.4));
+  if (!body) return fail(400, "mf_bad_audio", "Invalid or oversized audio request");
   if (!BATCH_MODELS.includes(body.model)) return fail(400, "mf_model_not_allowed", "Model not allowed");
   const input = Array.isArray(body.input) && body.input.length === 1 ? body.input[0] : null;
-  if (!input || input.type !== "audio" || input.mime_type !== "audio/wav") return fail(400, "mf_bad_audio", "Send one WAV file");
-  const ms = wavDurationMs(input.data);
-  if (ms === null) return fail(400, "mf_bad_audio", "Send 16-bit PCM WAV");
+  if (!input || input.type !== "audio" || input.mime_type !== "audio/wav" || !audioData(input.data, MAX_AUDIO_BYTES)) {
+    return fail(400, "mf_bad_audio", "Send one WAV file");
+  }
+  const duration = wavDurationMs(input.data);
+  if (!duration) return fail(400, "mf_bad_audio", "Send 16-bit PCM WAV");
+  const ms = Math.ceil(duration);
   if (ms > MAX_SESSION_MS) return fail(413, "mf_too_big", "Audio too long");
-  const resp = await forward("/v1beta/interactions", body, env);
-  if (resp.ok) ctx.waitUntil(charge(env, row.code, ms, "batch"));
-  return resp;
+  const config = body.generation_config?.transcription_config;
+  const transcription = {
+    mode: ["smart", "verbatim"].includes(config?.mode) ? config.mode : "smart",
+    language_codes: stringList(config?.language_codes, 16, 35),
+    custom_vocabulary: stringList(config?.custom_vocabulary, 100, 60),
+  };
+  for (const key of ["language_codes", "custom_vocabulary"]) {
+    if (!transcription[key].length) delete transcription[key];
+  }
+  return meteredForward("/v1beta/interactions", {
+    model: body.model, input: [{ type: "audio", mime_type: "audio/wav", data: input.data }],
+    generation_config: { transcription_config: transcription },
+  }, env, row.code, ms, "batch");
 }
 
 // Clean-up and English translation: text in, text out.
-async function generate(request, env, ctx, model) {
+async function generate(request, env, model) {
   const { row, err } = await account(request, env);
   if (err) return err;
   if (row.balance_ms <= 0) return noMinutes();
   if (!TEXT_MODELS.includes(model)) return fail(400, "mf_model_not_allowed", "Model not allowed");
-  const raw = await request.text();
-  if (raw.length > MAX_TEXT_BYTES) return fail(413, "mf_too_big", "Text too long");
-  const body = JSON.parse(raw);
-  const parts = [...(body.contents || []).flatMap((c) => c.parts || []), ...((body.systemInstruction || {}).parts || [])];
-  if (!parts.every((p) => Object.keys(p).every((k) => k === "text"))) return fail(400, "mf_text_only", "Text only");
-  delete body.tools; // no search or code tools on the owner's key
-  const resp = await forward(`/v1beta/models/${model}:generateContent`, body, env);
-  if (resp.ok) ctx.waitUntil(charge(env, row.code, TEXT_CALL_MS, "text"));
-  return resp;
+  const body = await boundedJson(request, MAX_TEXT_BYTES);
+  const cleanParts = (partList) => Array.isArray(partList) && partList.length > 0
+    && partList.every((p) => typeof p?.text === "string" && Object.keys(p).length === 1)
+    ? partList.map(({ text }) => ({ text })) : null;
+  const parts = body?.contents?.length === 1 ? cleanParts(body.contents[0]?.parts) : null;
+  const system = body?.systemInstruction ? cleanParts(body.systemInstruction.parts) : null;
+  if (!parts || (body?.systemInstruction && !system)) return fail(400, "mf_text_only", "Send one text-only message");
+  const payload = { contents: [{ parts }], generationConfig: {
+    candidateCount: 1, maxOutputTokens: 8192, thinkingConfig: { thinkingLevel: "low" },
+  } };
+  if (system) payload.systemInstruction = { parts: system };
+  return meteredForward(`/v1beta/models/${model}:generateContent`, payload, env, row.code, TEXT_CALL_MS, "text");
 }
 
 // A WebSocket message as text. Google sends JSON in binary frames, which arrive as an
@@ -194,40 +269,67 @@ async function live(request, env, ctx) {
   if (err) return err;
   if (row.balance_ms <= 0) return noMinutes();
 
-  const up = await fetch(GOOGLE + LIVE_PATH, { headers: { upgrade: "websocket", "x-goog-api-key": env.GEMINI_API_KEY } });
-  const upstream = up.webSocket;
-  if (!upstream) return fail(502, "mf_upstream", `Google refused the connection (${up.status})`);
-  upstream.accept();
-  const [client, server] = Object.values(new WebSocketPair());
-  server.accept();
-
-  const limit = Math.min(MAX_SESSION_MS, row.balance_ms + GRACE_MS);
+  const limit = Math.min(MAX_SESSION_MS, row.balance_ms);
+  if (!(await reserve(env, row.code, limit))) return noMinutes();
+  let upstream, client, server;
+  try {
+    const up = await fetch(GOOGLE + LIVE_PATH, {
+      headers: { upgrade: "websocket", "x-goog-api-key": env.GEMINI_API_KEY },
+      signal: AbortSignal.timeout(10_000),
+    });
+    upstream = up.webSocket;
+    if (!upstream) throw new Error("Upstream upgrade failed");
+    upstream.accept();
+    [client, server] = Object.values(new WebSocketPair());
+    server.accept();
+  } catch {
+    if (upstream) { try { upstream.close(); } catch { /* not open */ } }
+    await settle(env, row.code, limit, 0, "live");
+    return fail(502, "mf_upstream", "Google refused the connection");
+  }
   let audioMs = 0, setup = false, heard = false, closed = false;
 
+  const timer = setTimeout(() => finish(1000, "mf_too_long"), MAX_SESSION_MS + 15_000);
   const finish = (code = 1000, reason = "") => {
     if (closed) return;
     closed = true;
+    clearTimeout(timer);
     for (const ws of [server, upstream]) {
       try { ws.close(code, reason); } catch { try { ws.close(); } catch { /* already closed */ } }
     }
     // Charge only when Google sent words back; a failed session falls back to batch, which is charged there.
-    if (heard) ctx.waitUntil(charge(env, row.code, audioMs, "live"));
+    ctx.waitUntil(settle(env, row.code, limit, heard ? audioMs : 0, "live"));
   };
 
   const fromApp = queue(), fromGoogle = queue();
 
   server.addEventListener("message", (event) => fromApp(async () => {
     if (closed) return;
-    let msg;
+    let msg, payload;
     try {
-      msg = JSON.parse(await asText(event.data));
+      const raw = await asText(event.data);
+      if (closed) return;
+      if (raw.length > MAX_LIVE_FRAME) return finish(1009, "mf_too_big");
+      msg = JSON.parse(raw);
+      if (!msg || typeof msg !== "object") return finish(1007, "mf_bad_message");
     } catch {
       return finish(1007, "mf_bad_message");
     }
     if (msg.setup) {
       const model = String(msg.setup.model || "").replace(/^models\//, "");
       if (setup || !LIVE_MODELS.includes(model)) return finish(1008, "mf_model_not_allowed");
-      delete msg.setup.tools;
+      const config = msg.setup.inputAudioTranscription;
+      const customVocabulary = stringList(config?.customVocabulary, 100, 60);
+      payload = { setup: {
+        model: `models/${model}`,
+        generationConfig: { responseModalities: ["TEXT"] },
+        realtimeInputConfig: { automaticActivityDetection: { disabled: true } },
+        inputAudioTranscription: {
+          mode: config?.mode === "VERBATIM" ? "VERBATIM" : "SMART",
+          languageCodes: stringList(config?.languageCodes, 16, 35),
+          ...(customVocabulary.length ? { customVocabulary } : {}),
+        },
+      } };
       setup = true;
     } else if (!setup) {
       return finish(1008, "mf_setup_first");
@@ -235,17 +337,25 @@ async function live(request, env, ctx) {
       // Audio and push-to-talk markers only: no typed prompts on the owner's key.
       const input = msg.realtimeInput;
       if (!input || Object.keys(msg).length !== 1) return finish(1008, "mf_audio_only");
-      for (const key of Object.keys(input)) {
-        if (!["audio", "activityStart", "activityEnd", "audioStreamEnd"].includes(key)) return finish(1008, "mf_audio_only");
+      const keys = Object.keys(input);
+      if (keys.length !== 1 || !["audio", "activityStart", "activityEnd", "audioStreamEnd"].includes(keys[0])) {
+        return finish(1008, "mf_audio_only");
       }
       if (input.audio) {
         const rate = pcmRate(input.audio.mimeType);
-        if (!rate) return finish(1008, "mf_bad_audio");
-        audioMs += (base64Bytes(input.audio.data) / (rate * 2)) * 1000;
+        const data = input.audio.data;
+        if (!rate || !audioData(data, MAX_LIVE_FRAME) || base64Bytes(data) % 2) return finish(1008, "mf_bad_audio");
+        const duration = (base64Bytes(data) / (rate * 2)) * 1000;
+        if (Math.ceil(audioMs + duration) > limit) return finish(1000, "mf_no_minutes");
+        audioMs += duration;
+        payload = { realtimeInput: { audio: { mimeType: `audio/pcm;rate=${rate}`, data } } };
+      } else {
+        const key = keys[0];
+        if (key === "audio") return finish(1008, "mf_bad_audio");
+        payload = { realtimeInput: { [key]: key === "audioStreamEnd" ? true : {} } };
       }
     }
-    try { upstream.send(JSON.stringify(msg)); } catch { return finish(1011, "mf_upstream"); }
-    if (audioMs > limit) finish(1000, audioMs > MAX_SESSION_MS ? "mf_too_long" : "mf_no_minutes");
+    try { upstream.send(JSON.stringify(payload)); } catch { return finish(1011, "mf_upstream"); }
   }));
 
   upstream.addEventListener("message", (event) => fromGoogle(async () => {

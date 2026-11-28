@@ -323,13 +323,16 @@ async function screenshot(request, env, url, id) {
     return json(publicOrder(await getOrder(env, id), url));
   }
 
-  // A clean receipt: pay now (payment 0 = paid on the screenshot alone), tell the owner.
-  await env.DB.prepare("UPDATE orders SET txn = ?1, wallet = ?2, doubts = NULL WHERE id = ?3 AND status = 'new'").bind(txn, wallet, id).run();
-  if (await complete(env, { ...order, txn, wallet }, oneOff(), "ai")) {
-    const paid = await getOrder(env, id);
-    await tell(env, `✅ ရောင်းရပြီ — ${ks(order.amount)} Ks → ${paid.code}\n${orderLine(order)}\n${wallet} · Txn ${txn}\n\n` +
-                    `${wallet} history မှာ ငွေမဝင်ရင် ↩️ ကို နှိပ်ပါ (ပေးထားတဲ့ မိနစ် ပြန်နုတ်မယ်)။`,
-               { photo: image, type, buttons: [["↩️ ငွေမဝင်ဘူး — ပြန်ရုပ်သိမ်း", "undo:" + id]] });
+  // OCR supplies matching data. Only a wallet notification or the owner can release credit.
+  const moved = await env.DB.prepare(
+    "UPDATE orders SET status = 'review', reason = ?1, doubts = NULL, txn = ?2, wallet = ?3 WHERE id = ?4 AND status = 'new'",
+  ).bind(SAY_REVIEW, txn, wallet, id).run();
+  if (moved.meta.changes) {
+    await matchOrder(env, await getOrder(env, id));
+    if ((await getOrder(env, id)).status === "review") {
+      await tell(env, `🔎 ငွေဝင်တာ အတည်ပြုပေးပါ — ${ks(order.amount)} Ks\n${orderLine(order)}\n${wallet} · Txn ${txn}`,
+                 { photo: image, type, buttons: [["✅ ငွေရပြီ", "ok:" + id], ["❌ ငြင်းမယ်", "no:" + id]] });
+    }
   }
   return json(publicOrder(await getOrder(env, id), url));
 }
@@ -384,7 +387,10 @@ async function inbox(request, env, token) {
 
   const now = new Date().toISOString();
   const dup = await env.DB.prepare("SELECT id FROM payments WHERE raw = ? AND at > ?").bind(notice, ago(10 * 60_000)).first();
-  if (dup) return json({ ok: true, duplicate: true });
+  if (dup) {
+    await matchPayment(env, dup.id);
+    return json({ ok: true, duplicate: true });
+  }
 
   let r = null;
   try {
@@ -394,7 +400,11 @@ async function inbox(request, env, token) {
   }
   const received = !!(r && r.money_received && Number(r.amount) > 0);
   const txn = received ? cleanTxn(r.transaction_id) : null;
-  if (txn && await env.DB.prepare("SELECT id FROM payments WHERE txn = ?").bind(txn).first()) return json({ ok: true, duplicate: true });
+  const known = txn && await env.DB.prepare("SELECT id FROM payments WHERE txn = ?").bind(txn).first();
+  if (known) {
+    await matchPayment(env, known.id);
+    return json({ ok: true, duplicate: true });
+  }
   const row = await env.DB.prepare(
     "INSERT INTO payments (at, wallet, amount, txn, sender, raw, parsed) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) RETURNING id",
   ).bind(now, received ? String(r.wallet || "").slice(0, 20) : null, received ? Math.round(Number(r.amount)) : null, txn,
@@ -410,14 +420,20 @@ const txnAgrees = (order, payment) => !order.txn || !payment.txn || order.txn ==
 async function matchOrder(env, order) {
   if (!order || !WAITING.includes(order.status)) return;
   const { results } = await env.DB.prepare(
-    "SELECT * FROM payments WHERE order_id IS NULL AND amount = ?1 AND at > ?2 ORDER BY id",
-  ).bind(order.amount, new Date(Date.parse(order.created_at) - 10 * 60_000).toISOString()).all();
+    "SELECT * FROM payments WHERE (order_id IS NULL OR order_id = ?3) AND amount = ?1 AND at > ?2 ORDER BY id",
+  ).bind(order.amount, new Date(Date.parse(order.created_at) - 10 * 60_000).toISOString(), order.id).all();
   const payment = results.find((p) => order.txn && p.txn === order.txn) || results.find((p) => txnAgrees(order, p));
   if (payment) await complete(env, order, payment.id);
 }
 
 async function matchPayment(env, paymentId) {
   const payment = await env.DB.prepare("SELECT * FROM payments WHERE id = ?").bind(paymentId).first();
+  if (!payment?.amount) return;
+  if (payment.order_id) {
+    const linked = await getOrder(env, payment.order_id);
+    if (linked && WAITING.includes(linked.status)) await complete(env, linked, paymentId);
+    return;
+  }
   const { results } = await env.DB.prepare(
     "SELECT * FROM orders WHERE status IN ('checking', 'review') AND amount = ?1 AND created_at > ?2 AND created_at < ?3 ORDER BY created_at",
   ).bind(payment.amount, new Date(Date.parse(payment.at) - ORDER_DAYS * DAY).toISOString(),
@@ -430,35 +446,32 @@ async function matchPayment(env, paymentId) {
 const oneOff = () => -(Date.now() * 1000 + Math.floor(Math.random() * 1000));
 
 // Marks the order paid with this payment and gives the minutes, once. `paymentId` is a
-// payments row, or oneOff() when no notification is behind it. `by`: phone | ai | owner.
+// payments row, or oneOff() when the owner confirmed it manually.
 export async function complete(env, order, paymentId, by = "phone") {
-  if (paymentId > 0) {
-    const claim = await env.DB.prepare("UPDATE payments SET order_id = ?1 WHERE id = ?2 AND order_id IS NULL").bind(order.id, paymentId).run();
-    if (!claim.meta.changes) return false;
-  }
   const now = new Date().toISOString();
   const code = order.topup || newCode();
   const ms = order.minutes * 60_000;
   const expires = daysFromNow(validDays(order.minutes));
   const note = [order.name, order.email, order.wallet].filter(Boolean).join(" · ") || `shop ${order.id.slice(0, 6)}`;
-  // The minutes are added only if this call is the one that marked the order paid.
-  const won = "EXISTS (SELECT 1 FROM orders WHERE id = ? AND payment_id = ?)";
+  // D1 runs the batch transactionally. Each dependent write requires the previous
+  // statement to have changed a row, so retries cannot grant the credit twice.
   const steps = [
-    env.DB.prepare("UPDATE orders SET status = 'paid', code = ?, paid_at = ?, payment_id = ?, paid_by = ?, reason = NULL WHERE id = ? AND status != 'paid'")
-      .bind(code, now, paymentId, by, order.id),
+    env.DB.prepare(`UPDATE orders SET status = 'paid', code = ?1, paid_at = ?2, payment_id = ?3, paid_by = ?4, reason = NULL
+      WHERE id = ?5 AND status IN ('new', 'checking', 'review')
+      AND (?6 IS NULL OR EXISTS (SELECT 1 FROM codes WHERE code = ?6))
+      AND (?3 < 0 OR EXISTS (SELECT 1 FROM payments WHERE id = ?3 AND (order_id IS NULL OR order_id = ?5)))`)
+      .bind(code, now, paymentId, by, order.id, order.topup || null),
     order.topup
-      ? env.DB.prepare(`UPDATE codes SET balance_ms = balance_ms + ?, expires_at = ${LATER_EXPIRY} WHERE code = ? AND ${won}`)
-          .bind(ms, expires, expires, code, order.id, paymentId)
-      : env.DB.prepare(`INSERT INTO codes (code, note, balance_ms, created_at, expires_at) SELECT ?, ?, ?, ?, ? WHERE ${won}`)
-          .bind(code, note, ms, now, expires, order.id, paymentId),
-    env.DB.prepare(`INSERT INTO ledger (code, at, kind, ms) SELECT ?, ?, 'shop', ? WHERE ${won}`).bind(code, now, ms, order.id, paymentId),
+      ? env.DB.prepare(`UPDATE codes SET balance_ms = balance_ms + ?, expires_at = ${LATER_EXPIRY} WHERE code = ? AND changes() = 1`)
+          .bind(ms, expires, expires, code)
+      : env.DB.prepare("INSERT INTO codes (code, note, balance_ms, created_at, expires_at) SELECT ?, ?, ?, ?, ? WHERE changes() = 1")
+          .bind(code, note, ms, now, expires),
+    env.DB.prepare("INSERT INTO ledger (code, at, kind, ms) SELECT ?, ?, 'shop', ? WHERE changes() = 1").bind(code, now, ms),
   ];
-  const [update] = await env.DB.batch(steps);
-  if (!update.meta.changes && paymentId > 0) {
-    // Someone else paid this order first; free the payment for another order.
-    await env.DB.prepare("UPDATE payments SET order_id = NULL WHERE id = ?1 AND order_id = ?2").bind(paymentId, order.id).run();
-    return false;
+  if (paymentId > 0) {
+    steps.push(env.DB.prepare("UPDATE payments SET order_id = ? WHERE id = ? AND changes() = 1").bind(order.id, paymentId));
   }
+  const [update] = await env.DB.batch(steps);
   return !!update.meta.changes;
 }
 

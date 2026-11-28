@@ -122,10 +122,10 @@ def admin_code(code):
 
 
 def pay_through(o, png):
-    """Upload a receipt that should pass; if the AI wants a human look, the owner approves it."""
+    """Upload the receipt and simulate the owner's confirmation."""
     r = shot(o, png)
     if r["status"] == "review":
-        print(f"     (order {o['id'][:6]} went to review — the AI doubted a drawn receipt; approving)")
+        print(f"     (order {o['id'][:6]} awaits payment confirmation; approving)")
         press("ok:" + o["id"])
         r = status(o)
     return r
@@ -171,9 +171,12 @@ Image.new("RGB", (600, 800), "#88aaff").save(blank, "PNG")
 r = shot(a, blank.getvalue())
 check("a picture that isn't a receipt is refused", r["status"] == "new" and r["reason"], r)
 
-# A good screenshot pays at once (or, if the AI doubts the drawing, after the owner's OK).
-r = pay_through(a, receipt(5100, txn_a))
-check("a good screenshot gives a code", r["status"] == "paid" and r["code"], r)
+# A good screenshot records a claim. It takes independent confirmation to issue a code.
+r = shot(a, receipt(5100, txn_a))
+check("a good screenshot alone gives no code", r["status"] == "review" and not r["code"], r)
+press("ok:" + a["id"])
+r = status(a)
+check("owner confirmation gives a code", r["status"] == "paid" and r["code"], r)
 code = r["code"]
 check("the new code has 60 minutes", seconds(code) == 3600, seconds(code))
 check("a 60-minute code lasts 30 days", days_left(code) == 30, days_left(code))

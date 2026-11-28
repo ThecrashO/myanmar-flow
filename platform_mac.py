@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 import AppKit
+import Quartz
 import numpy as np
 import sounddevice as sd
 from PIL import Image
@@ -186,6 +187,14 @@ def copy_text(text):
 
 def clipboard_text():
     return AppKit.NSPasteboard.generalPasteboard().stringForType_(AppKit.NSPasteboardTypeString)
+
+
+def foreground_window():
+    options = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
+    for window in Quartz.CGWindowListCopyWindowInfo(options, Quartz.kCGNullWindowID) or ():
+        if window.get(Quartz.kCGWindowLayer) == 0:
+            return (window[Quartz.kCGWindowOwnerPID], window[Quartz.kCGWindowNumber])
+    return None
 
 
 def send_paste():

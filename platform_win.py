@@ -236,6 +236,10 @@ def clipboard_text():
     return pyperclip.paste()
 
 
+def foreground_window():
+    return user32.GetForegroundWindow()
+
+
 def send_paste():
     keyboard.send("ctrl+v")
 

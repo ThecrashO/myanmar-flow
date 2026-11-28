@@ -733,9 +733,11 @@ def check_api_key(api_key):
     return friendly_error(RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}"))
 
 
-def paste_text(text, keep=True):
+def paste_text(text, target, keep=True):
     """Paste via the clipboard (reliable for Myanmar script). With keep=False the old
     clipboard is restored afterwards; otherwise the text stays there for Ctrl+V / ⌘V."""
+    if not target or plat.foreground_window() != target:
+        return False
     previous = None
     if not keep:
         try:
@@ -744,10 +746,17 @@ def paste_text(text, keep=True):
             pass
     plat.copy_text(text)
     time.sleep(0.05)
-    plat.send_paste()
-    if previous is not None:
-        time.sleep(0.3)
-        plat.copy_text(previous)
+    sent = False
+    try:
+        if plat.foreground_window() == target:
+            plat.send_paste()
+            sent = True
+        return sent
+    finally:
+        if previous is not None:
+            if sent:
+                time.sleep(0.3)
+            plat.copy_text(previous)
 
 
 autostart_enabled = plat.autostart_enabled
@@ -1582,6 +1591,7 @@ class App:
         self.ignore_release = False
         self.last_tap = None       # (mode, time) of a short tap, to detect double taps
         self.session = 0
+        self.target_window = None
         self.started_at = 0.0
         self.lock = threading.RLock()
         self.latest = None         # (tag, url) of a newer release
@@ -1671,8 +1681,9 @@ class App:
             threading.Thread(target=plat.beep, args=(freq, ms), daemon=True).start()
 
     def toggle_enabled(self, *_):
-        self.enabled = not self.enabled
         with self.lock:
+            self.enabled = not self.enabled
+            self.session += 1
             if not self.enabled and self.recording:
                 self.recording = self.locked = False
                 self.recorder.stop()
@@ -1744,6 +1755,7 @@ class App:
             if not has_credentials(self.cfg):
                 self.ui.put(("wizard",))
                 return
+            target_window = plat.foreground_window()
             live = None
             if self.cfg["live"]:
                 live = LiveTranscriber(self.cfg, lambda text: self.show_live(live, text))
@@ -1759,6 +1771,7 @@ class App:
             self.recording, self.mode, self.locked = True, mode, False
             self.started_at = time.time()
             self.session += 1
+            self.target_window = target_window
             timer = threading.Timer(MAX_RECORD_SECONDS, self.time_limit, args=(self.session,))
             timer.daemon = True
             timer.start()
@@ -1803,7 +1816,9 @@ class App:
             self.set_state("idle")
             return
         self.set_state("transcribing")
-        threading.Thread(target=self.process, args=(audio, self.mode, live), daemon=True).start()
+        threading.Thread(target=self.process,
+                         args=(audio, self.mode, live, self.session, self.target_window),
+                         daemon=True).start()
 
     def transcribe(self, audio, live):
         if live:
@@ -1813,16 +1828,16 @@ class App:
                 log.warning("Live transcription failed, sending the recording instead: %s", e)
         return transcribe(self.cfg, to_wav_bytes(audio))
 
-    def process(self, audio, mode, live=None):
-        t0 = time.time()
+    def process(self, audio, mode, live, session, target):
         try:
             text = self.transcribe(audio, live)
         except Exception as e:
             log.error("%s", e)
-            self.beep(300, 250)
-            self.set_state("idle", friendly_error(e))
+            with self.lock:
+                if self.enabled and session == self.session:
+                    self.beep(300, 250)
+                    self.set_state("idle", friendly_error(e))
             return
-        heard = time.time() - t0
         note = None
         snippet = find_snippet(self.cfg, text) if text else None
         if snippet:
@@ -1836,24 +1851,32 @@ class App:
                     note = "ဘာသာပြန်လို့မရလို့ မြန်မာလိုပဲ ထည့်ထားပါတယ်"
         if text and not snippet and mode == "dictate":
             text = fix_words(self.cfg, text)
-        if text:
-            # Never log the text itself: it can be private.
-            log.info("Typed %d characters (%s%s) after %.1fs + %.1fs", len(text), mode,
-                     ", live" if live else "", heard, time.time() - t0 - heard)
-            paste_text(text, keep=self.cfg["keep_in_clipboard"])
-            self.stats.add(len(text), len(audio) / SAMPLE_RATE)
-            self.history.append((datetime.now(), text))
-            self.update_menu()
+        self.deliver_result(text, note, len(audio), session, target)
         if using_code(self.cfg):
             self.refresh_balance()
-        if not self.enabled:
-            self.set_state("off")
-        elif note:
-            self.set_state("idle", note)
-        elif text and self.cfg["keep_in_clipboard"]:
-            self.set_state("done", f"Copy ကူးထားပြီး — {PASTE_KEYS} နဲ့လည်း ထည့်လို့ရ")
-        else:
-            self.set_state("done" if text else "idle")
+
+    def deliver_result(self, text, note, samples, session, target):
+        with self.lock:
+            current = self.enabled and session == self.session
+            if text:
+                self.history.append((datetime.now(), text))
+                self.update_menu()
+            if not current:
+                return
+            if text:
+                keep = self.cfg["keep_in_clipboard"]
+                try:
+                    pasted = paste_text(text, target, keep=keep)
+                except Exception:
+                    log.warning("Automatic paste failed; transcript kept in recent history")
+                    pasted = False
+                if not pasted:
+                    self.set_state("done", "အလိုအလျောက် မထည့်ပါ။ Tray → မကြာခင်က စာ (Copy)")
+                    return
+                self.stats.add(len(text), samples / SAMPLE_RATE)
+                if keep and not note:
+                    note = f"Copy ကူးထားပြီး — {PASTE_KEYS} နဲ့လည်း ထည့်လို့ရ"
+            self.set_state("done" if text else "idle", note)
 
     # --- updates
 
