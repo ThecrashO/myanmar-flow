@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS orders (
   status TEXT NOT NULL,             -- new | review (owner checks) | paid | rejected | revoked
   reason TEXT,                      -- what the buyer is told, in Burmese
   doubts TEXT,                      -- why the owner was asked to check, in Burmese
+  seen TEXT,                        -- JSON {amount, txn, wallet} of a receipt with the wrong amount
+  help_sent INTEGER NOT NULL DEFAULT 0, -- messages the buyer sent the owner from the order page
   txn TEXT,                         -- transaction ID read from the screenshot
   wallet TEXT,
   shot_tries INTEGER NOT NULL DEFAULT 0,

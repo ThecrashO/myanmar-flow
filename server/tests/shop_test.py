@@ -133,6 +133,11 @@ def pay_through(o, png):
 
 tx = lambda n: f"{n:02d}" + uuid.uuid4().hex[:12].upper()
 
+def local_sql(sql):
+    subprocess.run(["npx", "wrangler", "d1", "execute", "myanmar-flow", "--local", "--command", sql],
+                   cwd=SERVER, check=True, capture_output=True, shell=sys.platform == "win32")
+
+
 # Telegram: link the owner's chat with the one-time code the admin page would make.
 link = uuid.uuid4().hex[:16]
 subprocess.run(["npx", "wrangler", "d1", "execute", "myanmar-flow", "--local", "--command",
@@ -158,6 +163,7 @@ check("an order needs a name and email", requests.post(f"{BASE}/mf/orders", json
 txn_a = tx(1)
 r = shot(a, receipt(5000, txn_a))
 check("wrong amount is refused with the reason", r["status"] == "new" and "5,940" in (r["reason"] or ""), r)
+check("the order says up to 6,000 is fine", r["max_amount"] == 6000, r)
 r = shot(a, receipt(5940, txn_a, receiver="******1234"))
 check("wrong receiver is refused", r["status"] == "new" and "နံပါတ်" in (r["reason"] or ""), r)
 blank = io.BytesIO()
@@ -243,6 +249,31 @@ shop = requests.get(f"{BASE}/admin/api/shop", headers=ADMIN, timeout=20).json()
 mine = {o["id"]: o for o in shop["orders"]}
 check("admin sees who paid each order", mine[e["id"]]["paid_by"] == "owner" and mine[d["id"]]["paid_by"] == "phone", (mine[e["id"]]["paid_by"], mine[d["id"]]["paid_by"]))
 check("admin sees the phone link", shop["phone_url"].endswith(VARS["PHONE_TOKEN"]))
+
+# Paying a little more is fine; a wrong amount can still be paid for what was sent.
+local_sql("UPDATE orders SET net = 'earlier'")  # past the 8-orders-an-hour limit for this network
+f = order(60)
+r = pay_through(f, receipt(6000, tx(10)))
+check("paying up to the next 1,000 Ks gives the ordered minutes", r["status"] == "paid" and seconds(r["code"]) == 3600, (r, r.get("code") and seconds(r["code"])))
+g = order(60)
+r = shot(g, receipt(7500, tx(11)))
+check("7,500 for a 5,9xx order is refused", r["status"] == "new" and "7,500" in (r["reason"] or ""), r)
+seen = next(o for o in requests.get(f"{BASE}/admin/api/shop", headers=ADMIN).json()["orders"] if o["id"] == g["id"])["seen"]
+check("the owner can see what was paid", '"amount":7500' in (seen or ""), seen)
+press("paid:" + g["id"])
+s = status(g)
+check("💵 gives minutes for what was paid (75)", s["status"] == "paid" and s["minutes"] == 75 and seconds(s["code"]) == 75 * 60, s)
+h = order(60)
+r = shot(h, receipt(3000, tx(12)))
+check("3,000 for a 5,9xx order is refused", r["status"] == "new", r)
+helpme = lambda text: requests.post(f"{BASE}/mf/orders/{h['id']}/help", json={"text": text, "phone": "09 123"}, timeout=30)
+check("a message needs some text", helpme("").status_code == 400)
+r = helpme("3,000 ပဲ လွှဲမိတယ်")
+check("the buyer can write to the owner", r.status_code == 200 and r.json()["help_left"] == 2, r.text)
+helpme("2"); helpme("3")
+check("at most 3 messages per order", helpme("4").status_code == 429)
+r = requests.post(f"{BASE}/admin/api/shop/{h['id']}/approve-paid", headers=ADMIN, json={}).json()
+check("admin can also pay for what was sent (30 minutes)", r["status"] == "paid" and seconds(r["code"]) == 30 * 60, r)
 
 # Free trial: once per computer.
 device = "test-" + uuid.uuid4().hex

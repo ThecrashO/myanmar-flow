@@ -31,6 +31,7 @@ const MIN_MINUTES = 10, MAX_MINUTES = 6000;
 const ORDER_DAYS = 2;                    // an unpaid order can be paid within 2 days
 const ORDERS_PER_HOUR = 8;               // per network
 const SHOT_TRIES = 6;                    // screenshot checks per order
+const HELP_MESSAGES = 3;                 // messages a buyer can send the owner per order
 const MAX_SHOT_BYTES = 6 * 1024 * 1024;
 const TRIAL_MINUTES = 5, TRIALS_PER_NETWORK = 2, TRIALS_PER_DAY = 40;
 const RECOVERIES_PER_HOUR = 10;          // per network
@@ -49,6 +50,12 @@ const DAY = 86_400_000;
 const ks = (n) => Number(n).toLocaleString("en-US");
 const digits = (s) => String(s || "").replace(/\D/g, "");
 const cleanTxn = (s) => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "") || null;
+// A payment is fine from the exact amount up to the next 1,000 Ks (5,940 -> 5,940 to 6,000).
+const upTo = (amount) => Math.ceil(amount / 1000) * 1000;
+const amountOk = (paid, order) => paid >= order.amount && paid <= upTo(order.amount);
+const range = (order) => upTo(order.amount) > order.amount ? `${ks(order.amount)} – ${ks(upTo(order.amount))} Ks` : `${ks(order.amount)} Ks`;
+// What the AI read off a receipt whose only problem was the amount: {amount, txn, wallet}.
+const seenOf = (order) => { try { return order.seen ? JSON.parse(order.seen) : null; } catch { return null; } };
 
 // Routes anyone can call. Returns null when the path isn't the shop's.
 export async function shop(request, env, url) {
@@ -59,6 +66,8 @@ export async function shop(request, env, url) {
   if (m && request.method === "GET") return await showOrder(env, url, m[1]);
   m = p.match(/^\/mf\/orders\/([a-z0-9]{16})\/screenshot$/);
   if (m && post) return await screenshot(request, env, url, m[1]);
+  m = p.match(/^\/mf\/orders\/([a-z0-9]{16})\/help$/);
+  if (m && post) return await help(request, env, m[1]);
   if (p === "/mf/trial" && post) return await trial(request, env);
   if (p === "/mf/recover" && post) return await recover(request, env);
   m = p.match(/^\/mf\/pay-inbox\/([^/]+)$/);
@@ -88,6 +97,7 @@ function publicOrder(order, url) {
     reason: order.reason || null, topup: order.topup || null, code: paid ? order.code : null,
     expired: !paid && Date.now() - Date.parse(order.created_at) > ORDER_DAYS * DAY,
     days: validDays(order.minutes), expires_at: paid ? order.expires_at || null : null,
+    max_amount: upTo(order.amount), help_left: Math.max(0, HELP_MESSAGES - (order.help_sent || 0)),
     pay_to: PAY_TO, wallets: ["KBZPay", "WavePay"], note: "Myanmar Flow",
     buy_url: `${url.origin}/buy?order=${order.id}`,
   };
@@ -214,12 +224,14 @@ Notification:
 function receiptProblem(r, order) {
   if (!r.is_transfer_receipt) return "ဒါ ငွေလွှဲ screenshot မဟုတ်ပါဘူး။ ငွေလွှဲပြီးတာနဲ့ ပေါ်လာတဲ့ စာမျက်နှာ (ဒါမှမဟုတ် History ထဲက အဲ့ငွေလွှဲ တစ်ခုကို နှိပ်ပြီး ပေါ်လာတဲ့ အသေးစိတ်) ကို screenshot ရိုက်ပြီး ထည့်ပါ။";
   if (!r.succeeded) return "ငွေလွှဲတာ မအောင်မြင်သေးပုံ ရပါတယ်။ အောင်မြင်ကြောင်း ပြတဲ့ စာမျက်နှာကို ထည့်ပါ။";
-  if (Math.round(Number(r.amount)) !== order.amount) {
-    return `Screenshot ထဲမှာ ${ks(r.amount || 0)} Ks ဖြစ်နေပါတယ်။ ဒီ order အတွက် ${ks(order.amount)} Ks အတိအကျ လွှဲရပါမယ်။ ` +
-           "ခုလွှဲထားတဲ့ ငွေလွှဲရဲ့ screenshot (အရင် screenshot အဟောင်း မဟုတ်) ဟုတ်မဟုတ် စစ်ပြီး ပြန်ထည့်ပါ။";
-  }
   const phone = digits(r.receiver_phone);
-  if (phone.length >= 4 && !phone.endsWith(PAY_TAIL)) return `ငွေလက်ခံသူ နံပါတ် မှားနေပါတယ်။ ${PAY_TO} ကို လွှဲရပါမယ်။`;
+  if (phone.length >= 4 && !phone.endsWith(PAY_TAIL)) {
+    return `ငွေလက်ခံသူ နံပါတ် မှားနေပါတယ်။ ${PAY_TO} ကို လွှဲရပါမယ်။ တခြားနံပါတ်ကို မှားလွှဲမိရင် အဲ့ဒီ wallet ကို ဆက်သွယ်ပြီး ပြန်တောင်းပါ။`;
+  }
+  if (!amountOk(Math.round(Number(r.amount)), order)) {
+    return `Screenshot ထဲမှာ ${ks(r.amount || 0)} Ks ဖြစ်နေပါတယ်။ ဒီ order အတွက် ${range(order)} လွှဲရပါမယ်။ ` +
+           "Screenshot အဟောင်း မဟုတ်ဘဲ ခုလွှဲထားတာ ဟုတ်မဟုတ် စစ်ပါ။ ငွေ မှားလွှဲမိရင် အောက်က「ဆိုင်ရှင်ကို ပြောမယ်」နဲ့ ပြောပါ — စစ်ပြီး မိနစ် ထည့်ပေးပါမယ်။";
+  }
   return null;
 }
 
@@ -267,7 +279,7 @@ async function screenshot(request, env, url, id) {
   const wallet = String(receipt.wallet || "").slice(0, 20);
   let problem = receiptProblem(receipt, order);
   let reused = false;
-  if (!problem && txn) {
+  if (txn && receipt.is_transfer_receipt) {
     const used = await env.DB.prepare("SELECT id FROM orders WHERE txn = ? AND id != ?").bind(txn, id).first();
     if (used) {
       problem = "ဒီ screenshot (Transaction ID) ကို တခြား order မှာ သုံးပြီးသားပါ။";
@@ -275,16 +287,24 @@ async function screenshot(request, env, url, id) {
     }
   }
   if (problem) {
-    await env.DB.prepare("UPDATE orders SET reason = ? WHERE id = ? AND status = 'new'").bind(problem, id).run();
+    // Only the amount was wrong (the same receipt with the right amount would pass): keep what
+    // was paid, so the owner can give minutes for it with one press.
+    const paid = Math.round(Number(receipt.amount)) || 0;
+    const wrongAmount = !reused && paid > 0 && !receiptProblem({ ...receipt, amount: order.amount }, order);
+    const seen = wrongAmount ? JSON.stringify({ amount: paid, txn, wallet }) : null;
+    await env.DB.prepare("UPDATE orders SET reason = ?1, seen = COALESCE(?2, seen) WHERE id = ?3 AND status = 'new'").bind(problem, seen, id).run();
     if (reused) {
       await tell(env, `⚠️ သုံးပြီးသား screenshot ကို ပြန်တင်တယ်\n${orderLine(order)}\nTxn ${txn} ကို order ${reused.slice(0, 6)} မှာ သုံးပြီးသား။ Code မပေးပါ။`,
                  { photo: image, type });
     } else if (receipt.is_transfer_receipt) {
       // A real-looking receipt the AI turned down: the owner sees it, in case the AI misread it.
+      const buttons = [["✅ " + ks(order.amount) + " Ks ရပြီ — " + order.minutes + " မိနစ် ပေးမယ်", "ok:" + id]];
+      const fair = Math.floor(paid / PRICE);
+      if (wrongAmount && fair >= 1) buttons.push(["💵 လွှဲထားတဲ့ " + ks(paid) + " Ks အတွက် " + fair + " မိနစ် ပေးမယ်", "paid:" + id]);
       await tell(env, `⚠️ AI က လက်မခံ — ${ks(order.amount)} Ks\n${orderLine(order)}\nAI ဖတ်တာ: ${ks(receipt.amount || 0)} Ks · ` +
                       `${receipt.receiver_phone || "နံပါတ် မပါ"} · Txn ${txn || "—"}\nဝယ်သူကို ပြောထားတာ: ${problem}\n\n` +
-                      `AI မှားဖတ်ပြီး ${ks(order.amount)} Ks တကယ်ဝင်ရင် ✅ ကို နှိပ်ပါ။ မဟုတ်ရင် ဘာမှ မလုပ်လည်းရ (ဝယ်သူ ပြန်ထည့်လို့ရ)။`,
-                 { photo: image, type, buttons: [["✅ ငွေရပြီ — Code ပေးမယ်", "ok:" + id]] });
+                      `ငွေတကယ်ဝင်ရင် ခလုတ်တစ်ခု နှိပ်ပါ။ မဟုတ်ရင် ဘာမှ မလုပ်လည်းရ (ဝယ်သူ ပြန်ထည့်လို့ရ)။`,
+                 { photo: image, type, buttons });
     }
     return json(publicOrder(await getOrder(env, id), url));
   }
@@ -315,6 +335,32 @@ async function screenshot(request, env, url, id) {
 }
 
 const orderLine = (o) => `${o.minutes} မိနစ်${o.topup ? " ဖြည့် " + o.topup : ""} · order ${o.id.slice(0, 6)} · ${o.name || "?"} · ${o.email || "?"}`;
+
+// The buyer writes to the owner from the order page (paid the wrong amount, a stuck order ...).
+// It goes to Telegram with the buttons that fit the order.
+async function help(request, env, id) {
+  const order = await getOrder(env, id);
+  if (!order) return fail(404, "mf_no_order", "No such order");
+  const body = await request.json().catch(() => ({}));
+  const text = String(body.text || "").trim().slice(0, 600);
+  const phone = String(body.phone || "").trim().slice(0, 40);
+  if (!text) return fail(400, "mf_bad_help", "Write what happened");
+  const took = await env.DB.prepare("UPDATE orders SET help_sent = help_sent + 1 WHERE id = ? AND help_sent < ?").bind(id, HELP_MESSAGES).run();
+  if (!took.meta.changes) return fail(429, "mf_too_many", "Already sent");
+  const seen = seenOf(order), fair = seen ? Math.floor(seen.amount / PRICE) : 0;
+  const buttons = [];
+  if (order.status !== "paid" && order.status !== "revoked") buttons.push(["✅ " + ks(order.amount) + " Ks ရပြီ — " + order.minutes + " မိနစ် ပေးမယ်", "ok:" + id]);
+  if (order.status !== "paid" && order.status !== "revoked" && fair >= 1 && seen.amount !== order.amount) {
+    buttons.push(["💵 လွှဲထားတဲ့ " + ks(seen.amount) + " Ks အတွက် " + fair + " မိနစ် ပေးမယ်", "paid:" + id]);
+  }
+  if (order.status === "new" || WAITING.includes(order.status)) buttons.push(["❌ ငြင်းမယ်", "no:" + id]);
+  const status = { new: "Screenshot မအောင်သေး", review: "စစ်ဖို့ စောင့်", checking: "စစ်ဖို့ စောင့်", paid: "ပေးပြီး " + (order.code || ""), rejected: "ငြင်းထား", revoked: "ပြန်ရုပ်သိမ်းထား" }[order.status] || order.status;
+  const told = await tell(env, `📩 ဝယ်သူက စာပို့တယ် — ${ks(order.amount)} Ks\n${orderLine(order)}\nအခြေအနေ: ${status}` +
+                               (seen ? `\nAI ဖတ်တာ: ${ks(seen.amount)} Ks · Txn ${seen.txn || "—"}` : "") +
+                               (order.reason && order.status === "new" ? `\nဝယ်သူကို ပြောထားတာ: ${order.reason}` : "") +
+                               `\nဖုန်း: ${phone || "—"}\n\n「${text}」`, { buttons: buttons.length ? buttons : undefined });
+  return json({ ok: true, told, help_left: Math.max(0, HELP_MESSAGES - (order.help_sent || 0) - 1) });
+}
 
 // ---------------------------------------------------------------- the phone's notifications
 
@@ -429,6 +475,21 @@ async function decide(env, action, id) {
     const now = await getOrder(env, id);
     return now.status === "paid" ? `✅ ငွေရပြီ — ${now.code} ပေးလိုက်ပြီ (${tag})` : `${tag} ကို မပေးနိုင်ပါ`;
   }
+  if (action === "paid") {
+    // Minutes for what the buyer actually paid (the amount the AI read off their receipt).
+    if (order.status === "paid") return `${tag} က ပေးပြီးသားပါ (${order.code})`;
+    const seen = seenOf(order), minutes = seen ? Math.floor(seen.amount / PRICE) : 0;
+    if (!minutes) return `${tag} မှာ လွှဲထားတဲ့ ပမာဏ မသိပါ`;
+    if (seen.txn && await env.DB.prepare("SELECT 1 FROM orders WHERE txn = ? AND id != ?").bind(seen.txn, id).first()) {
+      return `Txn ${seen.txn} ကို တခြား order မှာ သုံးပြီးသား — မပေးပါ (${tag})`;
+    }
+    const changed = { ...order, minutes, amount: seen.amount, txn: seen.txn || null, wallet: seen.wallet || order.wallet };
+    await env.DB.prepare("UPDATE orders SET minutes = ?1, amount = ?2, txn = ?3, wallet = ?4 WHERE id = ?5 AND status != 'paid'")
+      .bind(changed.minutes, changed.amount, changed.txn, changed.wallet, id).run();
+    await complete(env, changed, oneOff(), "owner");
+    const now = await getOrder(env, id);
+    return now.status === "paid" ? `💵 ${ks(seen.amount)} Ks အတွက် ${minutes} မိနစ် — ${now.code} ပေးလိုက်ပြီ (${tag})` : `${tag} ကို မပေးနိုင်ပါ`;
+  }
   if (action === "no") {
     if (order.status === "paid") return `${tag} က ပေးပြီးသားပါ။ ပြန်ရုပ်သိမ်းချင်ရင် ↩️ ကို သုံးပါ`;
     await env.DB.prepare("UPDATE orders SET status = 'rejected', reason = ? WHERE id = ? AND status != 'paid'").bind(SAY_REJECTED, id).run();
@@ -486,7 +547,7 @@ async function tell(env, text, { photo, type, buttons } = {}) {
   if (!env.TELEGRAM_BOT_TOKEN) return false;
   const chat = await setting(env, "tg_chat");
   if (!chat) return false;
-  const markup = buttons ? { inline_keyboard: [buttons.map(([t, data]) => ({ text: t, callback_data: data }))] } : undefined;
+  const markup = buttons ? { inline_keyboard: buttons.map(([t, data]) => [{ text: t, callback_data: data }]) } : undefined;
   try {
     if (photo && /jpeg|png|webp/.test(type || "")) {
       const form = new FormData();
@@ -604,7 +665,7 @@ async function trial(request, env) {
 export async function shopAdmin(request, env, url, parts) {
   if (parts.length === 3 && request.method === "GET") {
     const orders = await env.DB.prepare(
-      "SELECT id, minutes, amount, topup, code, status, reason, doubts, txn, wallet, name, email, created_at, paid_at, payment_id, paid_by FROM orders ORDER BY created_at DESC LIMIT 100",
+      "SELECT id, minutes, amount, topup, code, status, reason, doubts, seen, help_sent, txn, wallet, name, email, created_at, paid_at, payment_id, paid_by FROM orders ORDER BY created_at DESC LIMIT 100",
     ).all();
     const payments = await env.DB.prepare(
       "SELECT id, at, wallet, amount, txn, sender, raw, order_id FROM payments ORDER BY id DESC LIMIT 60",
@@ -634,7 +695,7 @@ export async function shopAdmin(request, env, url, parts) {
     }
   }
   const m = (parts[3] || "").match(/^[a-z0-9]{16}$/);
-  const action = { approve: "ok", reject: "no", undo: "undo" }[parts[4]];
+  const action = { approve: "ok", "approve-paid": "paid", reject: "no", undo: "undo" }[parts[4]];
   if (m && action && post) {
     if (!(await getOrder(env, parts[3]))) return fail(404, "mf_no_order", "No such order");
     const said = await decide(env, action, parts[3]);

@@ -164,12 +164,17 @@ async function loadShop() {
     cell(r, o.minutes, "num");
     cell(r, ks(o.amount), "num");
     const why = o.status === "review" ? o.doubts : o.status === "new" ? o.reason : null;
+    const wrote = o.help_sent ? " · 📩 စာ " + o.help_sent : "";
     cell(r, (STATUS[o.status] || o.status) + (o.status === "paid" ? BY[o.paid_by] || "" : "") + (why ? " — " + why : "")
-      + (o.txn ? " · Txn " + o.txn : ""), o.status === "paid" ? "" : "muted");
+      + (o.txn ? " · Txn " + o.txn : "") + wrote, o.status === "paid" ? "" : "muted");
     cell(r, o.code || "—");
     cell(r, when(o.created_at), "muted");
     const act = r.insertCell();
     if (o.status !== "paid") button(act, "ငွေရပြီ", () => decide(o, "approve", ks(o.amount) + " ကို တကယ် ရထားတာ သေချာလား? Code ကို ချက်ချင်း ပေးပါမယ်။"));
+    const seen = (() => { try { return o.seen ? JSON.parse(o.seen) : null; } catch (e) { return null; } })();
+    const fair = seen ? Math.floor(seen.amount / 99) : 0;
+    if (o.status !== "paid" && o.status !== "revoked" && fair >= 1 && seen.amount !== o.amount)
+      button(act, "လွှဲသလောက် " + fair + " မိနစ်", () => decide(o, "approve-paid", ks(seen.amount) + " Ks (AI ဖတ်တာ) တကယ်ဝင်လား? " + fair + " မိနစ် ပေးပါမယ်။"));
     if (o.status === "review" || o.status === "checking") button(act, "ငြင်းမယ်", () => decide(o, "reject", ks(o.amount) + " မဝင်ဘူးလား? Code မပေးဘဲ ငြင်းပါမယ်။"), "danger");
     if (o.status === "paid") button(act, "ပြန်ရုပ်သိမ်း", () => decide(o, "undo", ks(o.amount) + " မဝင်ဘူးလား? ပေးထားတဲ့ " + o.minutes + " မိနစ်ကို ပြန်နုတ်ပါမယ်။"), "danger");
   }

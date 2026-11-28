@@ -26,7 +26,8 @@
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 18px; margin-top: 18px; }
   .card h2 { font-size: 17px; margin: 0 0 10px; }
   label.small { display: block; font-weight: 600; font-size: 14px; margin: 16px 0 6px; }
-  input[type=number], input[type=text] { width: 100%; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  input[type=number], input[type=text], input[type=tel], textarea { width: 100%; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  textarea { display: block; resize: vertical; }
   input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chips button { font: 600 14px "Noto Sans Myanmar", sans-serif; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; background: var(--bg); cursor: pointer; }
@@ -104,7 +105,7 @@
     <h1 id="payTitle">ငွေလွှဲပါ</h1>
     <p class="muted" id="payFor"></p>
     <div class="card">
-      <h2>① ဒီပမာဏ အတိအကျ လွှဲပါ</h2>
+      <h2>① ဒီပမာဏကို လွှဲပါ</h2>
       <p class="amount" id="amount"></p>
       <p class="muted hide" id="extra"></p>
       <div class="no"><span><b>KBZPay</b> · <b>WavePay</b></span><button type="button" id="copyNo">09 424 469 168 <small id="copyTip">ကူးမယ်</small></button></div>
@@ -130,6 +131,16 @@
         <li>မဟုတ်ရင် App ရဲ့ Settings → <b>Myanmar Flow Code</b> မှာ Paste လုပ်ပြီး Save နှိပ်ပါ</li>
         <li>App မရှိသေးရင် <a href="/#guide">ဒီမှာ Download</a> လုပ်ပါ</li>
       </ol>
+    </div>
+    <div class="card hide" id="helpCard">
+      <h2>ငွေ မှားလွှဲမိလား? ဆိုင်ရှင်ကို ပြောမယ်</h2>
+      <p class="muted" id="helpWhy">ပမာဏ မှားလွှဲမိတာ၊ Code မရသေးတာ စတာတွေကို ရေးပို့ပါ။ ဆိုင်ရှင်က စစ်ပြီး မိနစ် ထည့်ပေးတာ ဒါမှမဟုတ် ပြန်ဆက်သွယ်ပေးပါမယ်။</p>
+      <label class="small" for="helpText">ဘာဖြစ်တာလဲ</label>
+      <textarea id="helpText" rows="3" maxlength="600" placeholder="ဥပမာ 5,940 အစား 7,500 မှားလွှဲမိပါတယ်"></textarea>
+      <label class="small" for="helpPhone">ဖုန်းနံပါတ် <span class="muted">(ပြန်ဆက်ဖို့၊ မထည့်လည်းရ)</span></label>
+      <input id="helpPhone" type="tel" autocomplete="tel" inputmode="tel" placeholder="09 ..." maxlength="40">
+      <button class="btn line" id="helpSend">ဆိုင်ရှင်ဆီ ပို့မယ်</button>
+      <div class="status" id="helpOut"></div>
     </div>
     <p class="muted" style="margin-top:22px">ပြဿနာ ရှိရင် <a href="tel:+959424469168">09 424 469 168</a> ကို ဆက်သွယ်ပါ (order နံပါတ် <b id="orderNo"></b>)။ · <a href="/buy" id="again">Order အသစ်</a></p>
   </section>
@@ -213,9 +224,9 @@
     $("payFor").textContent = (o.topup ? o.topup + " ကို " + o.minutes + " မိနစ် ဖြည့်ရန်" : o.minutes + " မိနစ် Code အသစ်")
       + " · သက်တမ်း " + days(o.minutes);
     $("amount").innerHTML = Number(o.amount).toLocaleString("en-US") + " <small>Ks</small>";
-    var extra = o.amount - o.minutes * PRICE;
-    $("extra").classList.toggle("hide", extra <= 0);
-    $("extra").textContent = "(ဒီ order ကို ခွဲသိနိုင်ဖို့ " + extra + " ကျပ် ပိုထားပါတယ်။ ဒီပမာဏ အတိအကျ လွှဲပေးပါ)";
+    var top = o.max_amount || o.amount;
+    $("extra").classList.toggle("hide", top <= o.amount);
+    $("extra").textContent = ks(o.amount) + " ကနေ " + ks(top) + " အထိ ဘယ်လောက် လွှဲလည်း ရပါတယ် (ပိုတာကို ပြန်မအမ်းပါ)။";
     render();
   }
 
@@ -223,6 +234,14 @@
 
   function render() {
     var o = order;
+    // Writing to the owner: for any order not paid yet, opened when something went wrong.
+    var hc = $("helpCard");
+    hc.classList.toggle("hide", o.status === "paid");
+    if (o.help_left === 0 && !$("helpSend").disabled) {
+      $("helpSend").disabled = true;
+      $("helpText").disabled = $("helpPhone").disabled = true;
+      helpSays("ok", "ဆိုင်ရှင်ဆီ ပို့ပြီးပါပြီ ✓ စစ်ပြီး ပြန်ဆက်သွယ်ပေးပါမယ်။");
+    }
     if (o.status === "paid") {
       clearTimeout(timer);
       save("mf_order", null);
@@ -289,6 +308,23 @@
       return api("/mf/orders/" + order.id + "/screenshot", { method: "POST", headers: { "content-type": blob.type || "image/jpeg" }, body: blob });
     }).then(function (o) { busy = false; order = o; render(); })
       .catch(function (e) { busy = false; status("bad", e.message); poll(); });
+  });
+
+  function helpSays(kind, text) { var s = $("helpOut"); s.className = "status show " + kind; s.textContent = text; }
+  $("helpSend").addEventListener("click", function () {
+    var text = $("helpText").value.trim();
+    if (!text) { helpSays("bad", "ဘာဖြစ်တာလဲ ရေးပါ။"); return; }
+    $("helpSend").disabled = true;
+    api("/mf/orders/" + order.id + "/help", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: text, phone: $("helpPhone").value.trim() }) })
+      .then(function (r) {
+        $("helpText").value = "";
+        helpSays("ok", r.told ? "ဆိုင်ရှင်ဆီ ရောက်ပါပြီ ✓ စစ်ပြီး မိနစ် ထည့်ပေးတာ ဒါမှမဟုတ် ပြန်ဆက်သွယ်ပေးပါမယ်။"
+                              : "ပို့ပြီးပါပြီ။ မြန်မြန် လိုရင် 09 424 469 168 ကို ဖုန်းဆက်ပါ။");
+        order.help_left = r.help_left;
+        $("helpSend").disabled = r.help_left === 0;
+      })
+      .catch(function (e) { helpSays("bad", e.message); $("helpSend").disabled = false; });
   });
 
   // Codes bought on this phone, newest first, so they're easy to find again here.
