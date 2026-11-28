@@ -260,19 +260,35 @@ async function screenshot(request, env, url, id) {
   if (!order) return fail(404, "mf_no_order", "No such order");
   // Paid, waiting for the owner, or already decided: another screenshot changes nothing.
   if (order.status !== "new") return json(publicOrder(order, url));
-  if (order.shot_tries >= SHOT_TRIES) return fail(429, "mf_too_many", "Too many screenshots for this order");
   const type = (request.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
   if (!/^image\/(png|jpeg|webp|heic|heif)$/.test(type)) return fail(415, "mf_not_image", "Send a PNG or JPEG screenshot");
   const image = await request.arrayBuffer();
   if (image.byteLength > MAX_SHOT_BYTES) return fail(413, "mf_too_big", "Screenshot too big");
   if (image.byteLength < 2000) return fail(400, "mf_not_image", "Screenshot too small");
-  await env.DB.prepare("UPDATE orders SET shot_tries = shot_tries + 1 WHERE id = ?").bind(id).run();
+  const bytes = await crypto.subtle.digest("SHA-256", image);
+  const digest = Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const [claimed] = await env.DB.batch([
+    env.DB.prepare(`INSERT OR IGNORE INTO receipt_fingerprints (digest, order_id)
+      SELECT ?1, id FROM orders WHERE id = ?2 AND status = 'new' AND shot_tries < ?3`)
+      .bind(digest, id, SHOT_TRIES),
+    env.DB.prepare("UPDATE orders SET shot_tries = shot_tries + 1 WHERE id = ? AND changes() = 1").bind(id),
+  ]);
+  if (!claimed.meta.changes) {
+    const first = await env.DB.prepare("SELECT order_id FROM receipt_fingerprints WHERE digest = ?").bind(digest).first();
+    if (first && first.order_id !== id) {
+      return fail(409, "mf_receipt_reused", "ဒီ screenshot ကို တခြား order မှာ သုံးပြီးသားပါ။");
+    }
+    const current = await getOrder(env, id);
+    if (first || current.status !== "new") return json(publicOrder(current, url));
+    return fail(429, "mf_too_many", "Too many screenshots for this order");
+  }
 
   let receipt;
   try {
     receipt = await askGemini(env, VISION_MODEL, [{ inline_data: { mime_type: type, data: toBase64(image) } }, { text: RECEIPT_PROMPT }], RECEIPT_SCHEMA);
   } catch (e) {
     console.error("receipt:", String(e));
+    await env.DB.prepare("DELETE FROM receipt_fingerprints WHERE digest = ? AND order_id = ?").bind(digest, id).run();
     return fail(502, "mf_ai_busy", "Couldn't read the screenshot, try again");
   }
   const txn = cleanTxn(receipt.transaction_id);

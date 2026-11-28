@@ -84,3 +84,31 @@ test("proxy forwards a bounded text request and refunds a failed upstream call",
   assert.equal(forwarded.metadata, undefined);
   assert.equal(await DB.prepare("SELECT balance_ms FROM codes").first("balance_ms"), 5000);
 });
+
+test("identical receipt uploads claim one order and run OCR only once", async (t) => {
+  const DB = await database(t);
+  const first = "receiptorder0001", second = "receiptorder0002";
+  await DB.batch([first, second].map((id) =>
+    DB.prepare("INSERT INTO orders (id, minutes, amount, status, created_at) VALUES (?, 30, 3000, 'new', ?)")
+      .bind(id, now)));
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  let ocrCalls = 0;
+  globalThis.fetch = (url, options) => {
+    if (!String(url).startsWith("https://generativelanguage.googleapis.com/")) return originalFetch(url, options);
+    ocrCalls++;
+    return Promise.resolve(Response.json({
+      candidates: [{ content: { parts: [{ text: '{"is_transfer_receipt":false}' }] } }],
+    }));
+  };
+  const upload = (id) => worker.fetch(new Request(`http://local/mf/orders/${id}/screenshot`, {
+    method: "POST", headers: { "content-type": "image/png" }, body: new Uint8Array(3000),
+  }), { DB, GEMINI_API_KEY: "test" }, {});
+
+  const results = await Promise.all([upload(first), upload(second)]);
+  assert.deepEqual(results.map((r) => r.status).sort(), [200, 409]);
+  const owner = await DB.prepare("SELECT order_id FROM receipt_fingerprints").first("order_id");
+  assert.equal((await upload(owner)).status, 200);
+  assert.equal(ocrCalls, 1);
+  assert.equal(await DB.prepare("SELECT SUM(shot_tries) AS attempts FROM orders").first("attempts"), 1);
+});

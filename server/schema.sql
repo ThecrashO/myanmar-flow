@@ -46,6 +46,12 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE INDEX IF NOT EXISTS orders_open ON orders (status, amount);
 CREATE INDEX IF NOT EXISTS orders_txn ON orders (txn);
 
+-- Exact-upload replay protection. Stores only the SHA-256 digest and its first order.
+CREATE TABLE IF NOT EXISTS receipt_fingerprints (
+  digest TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS payments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   at TEXT NOT NULL,
