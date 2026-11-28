@@ -1,11 +1,11 @@
 # Crash Flow
 
-![Crash Flow: voice typing for laptops](docs/images/cover.jpg)
+![Crash Flow: voice typing for laptops](docs/images/crash-flow-banner.jpg)
 
 **မြန်မာလို ပြောလိုက်ရုံနဲ့ ဘယ် app မှာမဆို စာဝင်တဲ့ Windows နဲ့ Mac program**
 *Burmese voice typing for Windows and macOS · [English](#english)*
 
-![Crash Flow pill](docs/images/pill-states.png)
+![Crash Flow pill](docs/images/crash-flow-pill.png)
 
 <p align="center">
   <a href="https://github.com/ThecrashO/crash-flow/releases/latest"><b>⬇️ Download (Windows · Mac · အခမဲ့)</b></a>
