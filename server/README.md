@@ -135,7 +135,7 @@ To run it every Sunday at 9 pm on this PC (Windows runs it later if the PC was o
 into PowerShell once:
 
 ```powershell
-$a = New-ScheduledTaskAction -Execute "npm.cmd" -Argument "run backup" -WorkingDirectory "D:\Second Brain\Projects\Crash Lab\Myanmar flow\server"
+$a = New-ScheduledTaskAction -Execute "npm.cmd" -Argument "run backup" -WorkingDirectory "D:\Second Brain\Projects\Crash Lab\crashflow\server"
 $t = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 9pm
 Register-ScheduledTask -TaskName "Crash Flow backup" -Action $a -Trigger $t -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable)
 ```
