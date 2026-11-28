@@ -120,7 +120,7 @@
     </div>
     <div class="card" id="shotCard">
       <h2>② Screenshot ထည့်ပါ</h2>
-      <p class="muted">AI က screenshot ကို ချက်ချင်း စစ်ပြီး Code ကို ဒီမှာ တန်းပြပါမယ်။</p>
+      <p class="muted">Screenshot ကို ချက်ချင်း စစ်ပြီး Code ကို ဒီမှာ တန်းပြပါမယ်။</p>
       <label class="btn" for="shot" id="shotBtn">📷 Screenshot ရွေးမယ်</label>
       <input id="shot" type="file" accept="image/*">
       <div class="status" id="status"></div>
@@ -316,7 +316,7 @@
     if (!file) return;
     busy = true;
     clearTimeout(timer);
-    status("wait", '<span class="spin"></span>AI က screenshot အသစ်ကို စစ်နေပါတယ်…');
+    status("wait", '<span class="spin"></span>Screenshot အသစ်ကို စစ်နေပါတယ်…');
     shrink(file).then(function (blob) {
       return api("/mf/orders/" + order.id + "/screenshot", { method: "POST", headers: { "content-type": blob.type || "image/jpeg" }, body: blob });
     }).then(function (o) { busy = false; order = o; render(); })
